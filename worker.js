@@ -81,7 +81,7 @@ async function addAiSummary(assessment, ai) {
           content: JSON.stringify({ sectionSummaries: scoreFacts }),
         },
       ],
-      max_completion_tokens: 100,
+      max_completion_tokens: 256,
       temperature: 0.2,
     });
     const summary =
