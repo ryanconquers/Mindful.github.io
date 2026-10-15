@@ -44,6 +44,9 @@ const staticFiles = new Map([
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/api-config.js", ["api-config.js", "text/javascript; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/admin", ["admin.html", "text/html; charset=utf-8"]],
+  ["/admin.html", ["admin.html", "text/html; charset=utf-8"]],
+  ["/admin.js", ["admin.js", "text/javascript; charset=utf-8"]],
 ]);
 
 export function createAppServer() {
@@ -55,6 +58,13 @@ export function createAppServer() {
         if (!validateAnswers(body?.answers)) {
           sendJson(response, 400, {
             error: "Please provide an answer from 0 to 3 for all 25 items.",
+          });
+          return;
+        }
+        if (body.consentToStore === true) {
+          sendJson(response, 503, {
+            error:
+              "Anonymous response storage is available only on the deployed service. Your responses were not saved.",
           });
           return;
         }

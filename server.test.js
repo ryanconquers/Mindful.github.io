@@ -148,6 +148,103 @@ test("Worker skips AI when the safety rule is triggered", async () => {
   assert.equal(invoked, false);
 });
 
+test("Worker saves only after explicit consent and protects admin records", async () => {
+  const inserted = [];
+  const database = {
+    prepare(sql) {
+      return {
+        bind(...values) {
+          return {
+            async run() {
+              inserted.push({ sql, values });
+              return { meta: { last_row_id: 42 } };
+            },
+            async all() {
+              return { results: [] };
+            },
+          };
+        },
+        async first() {
+          return {
+            total: 0,
+            mood_moderate_high: 0,
+            anxiety_moderate_high: 0,
+            stress_moderate_high: 0,
+            experiences_moderate_high: 0,
+            personality_moderate_high: 0,
+            safety_support_count: 0,
+            functioning_support_count: 0,
+          };
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+  const answers = answersWith(0);
+  answers[18] = 1;
+  const savedResponse = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ answers, consentToStore: true }),
+    }),
+    { DB: database },
+  );
+  const saved = await savedResponse.json();
+  assert.equal(savedResponse.status, 200);
+  assert.equal(saved.saved, true);
+  assert.equal(saved.submissionId, 42);
+  assert.equal(inserted.length, 1);
+  assert.equal(inserted[0].values[1], "storage-consent-v1");
+  assert.deepEqual(JSON.parse(inserted[0].values[2]), answers);
+  assert.equal(inserted[0].values[15], 1);
+
+  const authorization = `Basic ${btoa("admin:correct horse battery staple 2468")}`;
+  const withoutPassword = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/admin/summary", {
+      headers: { Origin: "https://example.github.io" },
+    }),
+    { DB: database, ADMIN_PASSWORD: "correct horse battery staple 2468" },
+  );
+  assert.equal(withoutPassword.status, 401);
+
+  const withPassword = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/admin/summary", {
+      headers: {
+        Origin: "https://example.github.io",
+        Authorization: authorization,
+      },
+    }),
+    { DB: database, ADMIN_PASSWORD: "correct horse battery staple 2468" },
+  );
+  assert.equal(withPassword.status, 200);
+  assert.equal((await withPassword.json()).summary.total, 0);
+});
+
+test("Worker refuses consented storage if the database is not configured", async () => {
+  const response = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        answers: answersWith(0),
+        consentToStore: true,
+      }),
+    }),
+    {},
+  );
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /were not saved/);
+});
+
 test("serves the site and validates assessment submissions", async (context) => {
   const server = createAppServer();
   server.listen(0, "127.0.0.1");
@@ -178,4 +275,19 @@ test("serves the site and validates assessment submissions", async (context) => 
   const result = await valid.json();
   assert.equal(result.scores.length, 5);
   assert.match(result.scores[0].summary, /did not mark any/);
+
+  const storageRequest = await fetch(`${baseUrl}/api/assessment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      answers: answersWith(),
+      consentToStore: true,
+    }),
+  });
+  assert.equal(storageRequest.status, 503);
+  assert.match((await storageRequest.json()).error, /were not saved/);
+
+  const adminPage = await fetch(`${baseUrl}/admin`);
+  assert.equal(adminPage.status, 200);
+  assert.match(await adminPage.text(), /Administrator sign in/);
 });

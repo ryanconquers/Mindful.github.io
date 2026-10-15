@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <title>Private dashboard | Mindful Check-in</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./api-config.js"></script>
+    <script src="./admin.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Mindful Check-in home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>mindful<span class="brand-light"> check-in</span></span>
+      </a>
+      <span class="header-note">Private administrator area</span>
+    </header>
+    <main class="admin-main">
+      <section class="intro admin-intro">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> SITE OPERATOR</p>
+        <h1>Response dashboard</h1>
+        <p class="intro-copy">
+          Anonymous response data is sensitive. This view is password protected.
+          Use the figures for questionnaire research only, not diagnosis.
+        </p>
+      </section>
+
+      <section class="form-shell admin-login-shell" aria-labelledby="login-title">
+        <form id="admin-login">
+          <h2 id="login-title">Administrator sign in</h2>
+          <label class="admin-password-label" for="admin-password">
+            Dashboard password
+          </label>
+          <input
+            id="admin-password"
+            class="admin-password-input"
+            type="password"
+            autocomplete="current-password"
+            minlength="20"
+            required
+          />
+          <button class="button button-primary" type="submit">Open dashboard</button>
+          <p id="admin-error" class="error-message" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section id="admin-dashboard" class="results-shell admin-dashboard" hidden>
+        <div class="admin-heading-row">
+          <div>
+            <p class="eyebrow">PRIVATE VIEW</p>
+            <h2>Submission overview</h2>
+          </div>
+          <button id="admin-logout" class="button button-secondary" type="button">
+            Sign out
+          </button>
+        </div>
+        <p class="admin-warning">
+          Saved responses are anonymous but sensitive. Bands are provisional and
+          unvalidated, not clinical diagnoses. Restrict access to the dashboard
+          password and delete records when no longer needed.
+        </p>
+        <div id="admin-metrics" class="admin-metrics"></div>
+        <h3 class="admin-subheading">Band counts by section</h3>
+        <div class="admin-table-wrap">
+          <table class="admin-band-table">
+            <thead>
+              <tr><th>Section</th><th>Band</th><th>Responses</th></tr>
+            </thead>
+            <tbody id="admin-band-rows"></tbody>
+          </table>
+        </div>
+        <div class="admin-heading-row admin-records-heading">
+          <div>
+            <h3 class="admin-subheading">Saved submissions</h3>
+            <p class="admin-note">Individual answers are visible below. Latest 500 shown.</p>
+          </div>
+          <div class="admin-actions">
+            <button id="admin-export" class="button button-secondary" type="button">
+              Export JSON
+            </button>
+            <button id="admin-delete" class="button button-danger" type="button">
+              Delete all records
+            </button>
+          </div>
+        </div>
+        <div id="admin-records" class="admin-records"></div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>Anonymous data is retained until the site operator deletes it.</p>
+      <p><a href="./">Return to the questionnaire</a></p>
+    </footer>
+  </body>
+</html>

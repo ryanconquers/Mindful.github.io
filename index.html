@@ -64,6 +64,19 @@
         </p>
 
         <form id="assessment-form">
+          <fieldset class="storage-consent">
+            <label class="storage-consent-label" for="storage-consent">
+              <input id="storage-consent" name="storageConsent" type="checkbox" />
+              <span>
+                <strong>Optional: save my anonymous answers for analysis</strong>
+                If selected, my individual answers and calculated scores will
+                be saved without my name or contact details in a private
+                administrator dashboard. The site operator can review them
+                until deleting the records. I can leave this unchecked to use
+                the questionnaire without saving my answers.
+              </span>
+            </label>
+          </fieldset>
           <fieldset class="ai-consent">
             <label class="ai-consent-label" for="ai-summary-consent">
               <input id="ai-summary-consent" name="aiSummary" type="checkbox" />
@@ -80,7 +93,7 @@
           </fieldset>
           <div id="question-groups"></div>
           <div class="submit-row">
-            <p>Your responses are used to calculate your results and are not saved.</p>
+            <p>Saving is optional. Without your consent, your answers are only used to calculate your results.</p>
             <button class="button button-primary" type="submit">
               See my check-in <span aria-hidden="true">→</span>
             </button>
@@ -96,6 +109,7 @@
       <p>Take what’s useful. Leave what isn’t.</p>
       <p>Mindful Check-in · AI-Driven Psychometric Assessment in Mental Health · NMIMS</p>
       <p>Not a substitute for professional care.</p>
+      <p><a href="./admin.html">Administrator dashboard</a></p>
     </footer>
   </body>
 </html>

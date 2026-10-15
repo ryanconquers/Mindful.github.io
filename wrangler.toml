@@ -5,3 +5,9 @@ workers_dev = true
 
 [ai]
 binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mindful-checkin-data"
+database_id = "__D1_DATABASE_ID__"
+migrations_dir = "migrations"

@@ -8,6 +8,7 @@ on:
       - "assessment.js"
       - "worker.js"
       - "wrangler.toml"
+      - "migrations/**"
       - ".github/workflows/deploy-api.yml"
 
 permissions:
@@ -18,7 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Configure D1 database binding
+        env:
+          D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          node -e "const fs = require('node:fs'); const id = process.env.D1_DATABASE_ID || ''; if (!/^[a-f0-9-]{20,}$/i.test(id)) throw new Error('Set the CLOUDFLARE_D1_DATABASE_ID repository variable to the D1 database ID before deploying.'); const path = 'wrangler.toml'; fs.writeFileSync(path, fs.readFileSync(path, 'utf8').replace('__D1_DATABASE_ID__', id));"
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply mindful-checkin-data --remote

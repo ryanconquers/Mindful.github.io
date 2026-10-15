@@ -267,7 +267,9 @@ function renderResults(data) {
   const resetRow = document.createElement("div");
   resetRow.className = "submit-row";
   const resetNote = document.createElement("p");
-  resetNote.textContent = "Your responses have not been saved.";
+  resetNote.textContent = data.saved
+    ? "You consented to save this anonymous response for the site operator’s analysis."
+    : "Your responses were used to calculate these results and were not saved.";
   const resetButton = document.createElement("button");
   resetButton.type = "button";
   resetButton.className = "button button-secondary";
@@ -314,6 +316,7 @@ form.addEventListener("submit", async (event) => {
 
   const submitButton = form.querySelector('button[type="submit"]');
   const aiSummaryRequested = document.querySelector("#ai-summary-consent").checked;
+  const storageConsent = document.querySelector("#storage-consent").checked;
   submitButton.disabled = true;
   submitButton.textContent = "Calculating…";
   try {
@@ -321,7 +324,11 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch(`${apiBase}/api/assessment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, aiSummary: aiSummaryRequested }),
+      body: JSON.stringify({
+        answers,
+        aiSummary: aiSummaryRequested,
+        consentToStore: storageConsent,
+      }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Your check-in could not be calculated.");
