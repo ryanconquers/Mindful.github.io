@@ -29,10 +29,12 @@ jobs:
       - name: Prepare static site
         env:
           API_BASE_URL: ${{ vars.API_BASE_URL }}
+          PAGES_VERSION: ${{ github.sha }}
         run: |
           mkdir dist
           cp index.html styles.css app.js api-config.js dist/
           node -e "require('node:fs').writeFileSync('dist/api-config.js', 'window.MIND_CHECKIN_API_BASE = ' + JSON.stringify(process.env.API_BASE_URL || 'https://mindful-checkin-api.ay455431.workers.dev') + ';\\n')"
+          node -e "const fs = require('node:fs'); let html = fs.readFileSync('dist/index.html', 'utf8'); for (const file of ['styles.css', 'api-config.js', 'app.js']) html = html.replaceAll('./' + file, './' + file + '?v=' + process.env.PAGES_VERSION); fs.writeFileSync('dist/index.html', html)"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
