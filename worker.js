@@ -99,10 +99,22 @@ async function addAiSummary(assessment, ai) {
         choicesLength: Array.isArray(result?.choices)
           ? result.choices.length
           : null,
+        finishReason: result?.choices?.[0]?.finish_reason,
         firstChoiceKeys:
           result?.choices?.[0] && typeof result.choices[0] === "object"
             ? Object.keys(result.choices[0])
             : [],
+        firstMessageKeys:
+          result?.choices?.[0]?.message &&
+          typeof result.choices[0].message === "object"
+            ? Object.keys(result.choices[0].message)
+            : [],
+        messageContentType: typeof result?.choices?.[0]?.message?.content,
+        messageContentLength:
+          typeof result?.choices?.[0]?.message?.content === "string"
+            ? result.choices[0].message.content.length
+            : null,
+        hasRefusal: Boolean(result?.choices?.[0]?.message?.refusal),
       };
       return assessment;
     }
