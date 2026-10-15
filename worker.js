@@ -54,7 +54,7 @@ async function addAiSummary(assessment, ai) {
     return assessment;
   }
   if (!ai || typeof ai.run !== "function") {
-    assessment.aiSummaryStatus = "unavailable";
+    assessment.aiSummaryStatus = "binding-unavailable";
     return assessment;
   }
 
@@ -89,13 +89,17 @@ async function addAiSummary(assessment, ai) {
         ? result
         : result?.response ?? result?.choices?.[0]?.message?.content;
     if (typeof summary !== "string" || !summary.trim()) {
-      assessment.aiSummaryStatus = "unavailable";
+      assessment.aiSummaryStatus = "empty-response";
       return assessment;
     }
     assessment.aiSummary = summary.trim().slice(0, 800);
     assessment.aiSummaryStatus = "available";
-  } catch {
-    assessment.aiSummaryStatus = "unavailable";
+  } catch (error) {
+    console.error(
+      "Workers AI summary request failed",
+      error instanceof Error ? error.name : "UnknownError",
+    );
+    assessment.aiSummaryStatus = "model-error";
   }
   return assessment;
 }

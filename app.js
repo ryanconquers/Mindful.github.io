@@ -197,7 +197,11 @@ function renderResults(data) {
     aiDisclaimer.textContent =
       "Generated from Mood, Anxiety, and Stress totals and counts only. AI can be inaccurate; this is not a diagnosis or clinical advice.";
     results.append(aiDisclaimer);
-  } else if (data.aiSummaryStatus === "unavailable") {
+  } else if (
+    ["unavailable", "binding-unavailable", "empty-response", "model-error"].includes(
+      data.aiSummaryStatus,
+    )
+  ) {
     addAlert(
       "ai-summary-status",
       "AI reflection unavailable",
