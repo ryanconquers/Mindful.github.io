@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir dist
           cp index.html styles.css app.js api-config.js dist/
-          node -e "require('node:fs').writeFileSync('dist/api-config.js', 'window.MIND_CHECKIN_API_BASE = ' + JSON.stringify(process.env.API_BASE_URL || '') + ';\\n')"
+          node -e "require('node:fs').writeFileSync('dist/api-config.js', 'window.MIND_CHECKIN_API_BASE = ' + JSON.stringify(process.env.API_BASE_URL || 'https://mindful-checkin-api.ay455431.workers.dev') + ';\\n')"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

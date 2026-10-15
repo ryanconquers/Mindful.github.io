@@ -39,9 +39,9 @@ GitHub Pages on GitHub Free.
 3. Push the project to the repository's `main` branch, then run the
    **Deploy assessment API** workflow from the Actions tab. Cloudflare's
    dashboard shows the deployed Worker URL.
-4. Add a repository **Actions variable** named `API_BASE_URL` with that full
-   Worker URL (no trailing slash), for example
-   `https://mindful-checkin-api.<account>.workers.dev`.
+4. The Pages workflow is configured with this project's deployed Worker URL.
+   If you deploy a different Worker, set a repository **Actions variable**
+   named `API_BASE_URL` to its full URL (no trailing slash).
 5. In repository Settings → Pages, select **GitHub Actions** as the build and
    deployment source. Run the **Deploy GitHub Pages site** workflow.
 
