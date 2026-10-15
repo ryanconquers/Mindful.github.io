@@ -186,6 +186,31 @@ function renderResults(data) {
     );
   }
 
+  if (data.aiSummaryStatus === "available" && data.aiSummary) {
+    addAlert(
+      "ai-summary",
+      "Optional AI-written reflection",
+      data.aiSummary,
+    );
+    const aiDisclaimer = document.createElement("p");
+    aiDisclaimer.className = "ai-disclaimer";
+    aiDisclaimer.textContent =
+      "Generated from Mood, Anxiety, and Stress totals and counts only. AI can be inaccurate; this is not a diagnosis or clinical advice.";
+    results.append(aiDisclaimer);
+  } else if (data.aiSummaryStatus === "unavailable") {
+    addAlert(
+      "ai-summary-status",
+      "AI reflection unavailable",
+      "The optional AI reflection could not be generated right now. Your rule-based scores and summaries are still available.",
+    );
+  } else if (data.aiSummaryStatus === "skipped-safety") {
+    addAlert(
+      "ai-summary-status",
+      "AI reflection not used",
+      "To prioritize your safety, the optional AI reflection was not generated. The supportive safety information above is based on your response.",
+    );
+  }
+
   const scoreList = document.createElement("div");
   scoreList.className = "score-list";
   for (const score of data.scores) {
@@ -284,6 +309,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   const submitButton = form.querySelector('button[type="submit"]');
+  const aiSummaryRequested = document.querySelector("#ai-summary-consent").checked;
   submitButton.disabled = true;
   submitButton.textContent = "Calculating…";
   try {
@@ -291,7 +317,7 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch(`${apiBase}/api/assessment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, aiSummary: aiSummaryRequested }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Your check-in could not be calculated.");

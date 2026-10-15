@@ -2,3 +2,6 @@ name = "mindful-checkin-api"
 main = "worker.js"
 compatibility_date = "2026-10-15"
 workers_dev = true
+
+[ai]
+binding = "AI"

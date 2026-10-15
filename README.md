@@ -3,12 +3,14 @@
 A responsive web version of the Integrated Mental Health Screening Questionnaire.
 The Node.js backend and optional Cloudflare Worker validate responses,
 calculate provisional scale bands, and return transparent, rule-based supportive
-guidance and answer summaries. Summaries describe response counts and
-provisional questionnaire bands; they are not AI-generated. The services do not
-persist responses or collect names, IDs, or contact details. This is not a
-trained machine-learning model: the questionnaire has no validated training
-data, and fabricating a predictive model would be inappropriate for a
-mental-health screening tool.
+guidance and answer summaries. Respondents may optionally opt in to a brief
+AI-written reflection generated with Cloudflare Workers AI. The model receives
+only aggregate Mood, Anxiety, and Stress scores/counts—not raw answers,
+safety/unusual-experience/personality responses, or identifiers. AI text may be
+inaccurate and is not clinical advice; the AI step is skipped for safety-trigger
+responses. Without opt-in, only rule-based summaries are returned. The
+application does not persist responses or collect names, IDs, or contact
+details.
 
 ## Run locally
 
@@ -56,10 +58,13 @@ must be connected and its Actions secrets configured by its owner.
 This is a screening and demonstration tool, not a diagnostic or treatment
 service. The questionnaire is a new composite, its scoring bands are
 provisional, and the draft unusual-experience and personality items are not
-validated. The supportive guidance is generated from explicit score and safety
-rules; it does not infer diagnoses or replace a clinician. Have the wording,
-scoring, privacy practices, and referral resources reviewed by qualified mental
-health professionals before any real-world use.
+validated. Rule-based supportive guidance is generated from explicit score and
+safety rules. The optional AI reflection is constrained to aggregate scores and
+counts, but language models can still be wrong; it does not diagnose or replace
+a clinician. Have the wording, scoring, AI behavior, privacy practices, and
+referral resources reviewed by qualified mental health professionals before
+any real-world use. Workers AI usage may be subject to Cloudflare plan limits
+or charges.
 
 Responses are sent to the backend only to calculate results, are not logged or
 saved by this application, and are cleared when the page is closed or reset.

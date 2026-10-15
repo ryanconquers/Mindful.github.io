@@ -63,6 +63,7 @@ export function calculateAssessment(answers) {
       score,
       max: scale.max,
       band: bandFor(score, scale.max),
+      frequentResponses,
       summary,
     };
   });

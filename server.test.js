@@ -74,6 +74,75 @@ test("Worker API calculates results for GitHub Pages and rejects unknown origins
   assert.equal(rejected.status, 403);
 });
 
+test("Worker AI summary uses only consented aggregate core-scale facts", async () => {
+  let model;
+  let input;
+  const answers = answersWith(1);
+  answers[18] = 0;
+  const response = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        answers,
+        aiSummary: true,
+      }),
+    }),
+    {
+      AI: {
+        async run(selectedModel, parameters) {
+          model = selectedModel;
+          input = parameters;
+          return { response: "A neutral reflection, not a diagnosis." };
+        },
+      },
+    },
+  );
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.aiSummaryStatus, "available");
+  assert.equal(result.aiSummary, "A neutral reflection, not a diagnosis.");
+  assert.equal(model, "@cf/google/gemma-4-26b-a4b-it");
+  const promptData = JSON.parse(input.messages[1].content);
+  assert.deepEqual(
+    promptData.sectionSummaries.map(({ section }) => section),
+    ["Mood", "Anxiety", "Stress"],
+  );
+  assert.equal(JSON.stringify(promptData).includes('"18"'), false);
+  assert.equal(input.max_tokens, 100);
+});
+
+test("Worker skips AI when the safety rule is triggered", async () => {
+  let invoked = false;
+  const answers = answersWith(0);
+  answers[18] = 1;
+  const response = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ answers, aiSummary: true }),
+    }),
+    {
+      AI: {
+        async run() {
+          invoked = true;
+          return { response: "Summary" };
+        },
+      },
+    },
+  );
+  const result = await response.json();
+  assert.equal(result.safetySupport, true);
+  assert.equal(result.aiSummaryStatus, "skipped-safety");
+  assert.equal(invoked, false);
+});
+
 test("serves the site and validates assessment submissions", async (context) => {
   const server = createAppServer();
   server.listen(0, "127.0.0.1");

@@ -64,6 +64,20 @@
         </p>
 
         <form id="assessment-form">
+          <fieldset class="ai-consent">
+            <label class="ai-consent-label" for="ai-summary-consent">
+              <input id="ai-summary-consent" name="aiSummary" type="checkbox" />
+              <span>
+                <strong>Optional: add an AI-written reflection</strong>
+                If you opt in, Cloudflare Workers AI receives only your Mood,
+                Anxiety, and Stress section totals and counts—not individual
+                answers, safety responses, unusual-experience responses,
+                personality responses, or identifying details. AI text may be
+                inaccurate and is not clinical advice. Leave unchecked to use
+                the standard rule-based summaries without an AI model.
+              </span>
+            </label>
+          </fieldset>
           <div id="question-groups"></div>
           <div class="submit-row">
             <p>Your responses are used to calculate your results and are not saved.</p>

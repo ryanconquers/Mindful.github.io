@@ -58,7 +58,13 @@ export function createAppServer() {
           });
           return;
         }
-        sendJson(response, 200, calculateAssessment(body.answers));
+        const assessment = calculateAssessment(body.answers);
+        if (body.aiSummary === true && !assessment.safetySupport) {
+          assessment.aiSummaryStatus = "unavailable";
+        } else if (body.aiSummary === true) {
+          assessment.aiSummaryStatus = "skipped-safety";
+        }
+        sendJson(response, 200, assessment);
       } catch (error) {
         sendJson(response, error.statusCode ?? 400, {
           error: error.message || "Unable to process this assessment.",

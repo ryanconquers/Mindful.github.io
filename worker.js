@@ -1,6 +1,7 @@
 import { calculateAssessment, validateAnswers } from "./assessment.js";
 
 const maxBodyBytes = 16 * 1024;
+const aiModel = "@cf/google/gemma-4-26b-a4b-it";
 const allowedOriginPattern =
   /^https:\/\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.github\.io$/i;
 
@@ -47,8 +48,57 @@ async function readJson(request) {
   }
 }
 
+async function addAiSummary(assessment, ai) {
+  if (assessment.safetySupport) {
+    assessment.aiSummaryStatus = "skipped-safety";
+    return assessment;
+  }
+  if (!ai || typeof ai.run !== "function") {
+    assessment.aiSummaryStatus = "unavailable";
+    return assessment;
+  }
+
+  const scoreFacts = assessment.scores
+    .filter(({ key }) => ["mood", "anxiety", "stress"].includes(key))
+    .map(({ name, score, max, band, frequentResponses }) => ({
+      section: name,
+      total: score,
+      maximum: max,
+      provisionalBand: band,
+      oftenReportedCount: frequentResponses,
+    }));
+
+  try {
+    const result = await ai.run(aiModel, {
+      messages: [
+        {
+          role: "system",
+          content:
+            "Write a brief, gentle reflection (at most 60 words) about the aggregate questionnaire data provided. The questionnaire is unvalidated. Do not diagnose, label, infer causes, predict outcomes, or recommend treatment. Do not describe the provisional bands as clinical facts. Use nonjudgmental language and state that this is only a reflection, not a diagnosis. Do not give crisis advice; a separate safety message handles that.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({ sectionSummaries: scoreFacts }),
+        },
+      ],
+      max_tokens: 100,
+      temperature: 0.2,
+    });
+    const summary = result?.response;
+    if (typeof summary !== "string" || !summary.trim()) {
+      assessment.aiSummaryStatus = "unavailable";
+      return assessment;
+    }
+    assessment.aiSummary = summary.trim().slice(0, 800);
+    assessment.aiSummaryStatus = "available";
+  } catch {
+    assessment.aiSummaryStatus = "unavailable";
+  }
+  return assessment;
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
 
@@ -74,7 +124,18 @@ export default {
           origin,
         );
       }
-      return jsonResponse(calculateAssessment(body.answers), 200, origin);
+      if (body.aiSummary !== undefined && typeof body.aiSummary !== "boolean") {
+        return jsonResponse(
+          { error: "The AI-summary opt-in must be true or false." },
+          400,
+          origin,
+        );
+      }
+      const assessment = calculateAssessment(body.answers);
+      if (body.aiSummary === true) {
+        await addAiSummary(assessment, env?.AI);
+      }
+      return jsonResponse(assessment, 200, origin);
     } catch (error) {
       const status = error.message === "Request body is too large." ? 413 : 400;
       return jsonResponse(
