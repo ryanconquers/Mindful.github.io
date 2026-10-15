@@ -135,6 +135,7 @@ function renderRecords(submissions) {
     }
     const flags = document.createElement("p");
     flags.textContent = [
+      `Consent: ${submission.researchConsent || submission.consentVersion}`,
       submission.safetySupport ? "Safety support triggered" : "",
       submission.unusualExperienceReferral
         ? "Unusual-experience referral prompt triggered"

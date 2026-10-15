@@ -184,6 +184,20 @@ test("Worker saves only after explicit consent and protects admin records", asyn
   };
   const answers = answersWith(0);
   answers[18] = 1;
+  const notSavedResponse = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ answers, consentToStore: false }),
+    }),
+    { DB: database },
+  );
+  assert.equal((await notSavedResponse.json()).saved, false);
+  assert.equal(inserted.length, 0);
+
   const savedResponse = await worker.fetch(
     new Request("https://api.example.workers.dev/api/assessment", {
       method: "POST",
@@ -191,7 +205,12 @@ test("Worker saves only after explicit consent and protects admin records", asyn
         Origin: "https://example.github.io",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ answers, consentToStore: true }),
+      body: JSON.stringify({
+        answers,
+        consentToStore: true,
+        researchConsent:
+          "I confirm I am 18 or older and consent to research storage.",
+      }),
     }),
     { DB: database },
   );
@@ -200,9 +219,13 @@ test("Worker saves only after explicit consent and protects admin records", asyn
   assert.equal(saved.saved, true);
   assert.equal(saved.submissionId, 42);
   assert.equal(inserted.length, 1);
-  assert.equal(inserted[0].values[1], "storage-consent-v1");
-  assert.deepEqual(JSON.parse(inserted[0].values[2]), answers);
-  assert.equal(inserted[0].values[15], 1);
+  assert.equal(inserted[0].values[1], "research-consent-v2");
+  assert.equal(
+    inserted[0].values[2],
+    "I confirm I am 18 or older and consent to research storage.",
+  );
+  assert.deepEqual(JSON.parse(inserted[0].values[3]), answers);
+  assert.equal(inserted[0].values[16], 1);
 
   const authorization = `Basic ${btoa("admin:correct horse battery staple 2468")}`;
   const withoutPassword = await worker.fetch(
@@ -237,6 +260,8 @@ test("Worker refuses consented storage if the database is not configured", async
       body: JSON.stringify({
         answers: answersWith(0),
         consentToStore: true,
+        researchConsent:
+          "I confirm I am 18 or older and consent to research storage.",
       }),
     }),
     {},

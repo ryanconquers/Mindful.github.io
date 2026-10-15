@@ -268,7 +268,7 @@ function renderResults(data) {
   resetRow.className = "submit-row";
   const resetNote = document.createElement("p");
   resetNote.textContent = data.saved
-    ? "You consented to save this anonymous response for the site operator’s analysis."
+    ? "Your anonymous response was saved with your research-storage consent."
     : "Your responses were used to calculate these results and were not saved.";
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -328,6 +328,9 @@ form.addEventListener("submit", async (event) => {
         answers,
         aiSummary: aiSummaryRequested,
         consentToStore: storageConsent,
+        researchConsent: storageConsent
+          ? "18+ research storage consent v2"
+          : undefined,
       }),
     });
     const data = await response.json();

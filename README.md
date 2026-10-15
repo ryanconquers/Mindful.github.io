@@ -56,7 +56,10 @@ GitHub Pages on GitHub Free.
 8. Share the questionnaire URL. The optional **Administrator dashboard** link
    is at the bottom of the page; sign in with username `admin` and the Worker
    password. The dashboard shows band counts, individual consented submissions,
-   a JSON export, and a delete-all control.
+   a JSON export, and a delete-all control. Saving requires an explicit
+   confirmation that the participant is 18+ and agrees to this research
+   storage. Saved records have no automatic expiry and remain until manually
+   deleted by the operator.
 
 The site workflow supports both root and repository-path Pages URLs. The Worker
 accepts browser requests from GitHub Pages origins and returns no-store

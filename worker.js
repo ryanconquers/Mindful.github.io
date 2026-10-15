@@ -122,7 +122,8 @@ async function handleAdmin(request, env, url, origin) {
       : 500;
     const result = await env.DB.prepare(`
       SELECT id, submitted_at, answers_json, scores_json, safety_support,
-        unusual_experience_referral, functioning_score, consent_version
+        unusual_experience_referral, functioning_score, consent_version,
+        research_consent
       FROM submissions
       ORDER BY id DESC
       LIMIT ?
@@ -140,6 +141,7 @@ async function handleAdmin(request, env, url, origin) {
           unusualExperienceReferral: Boolean(row.unusual_experience_referral),
           functioningScore: row.functioning_score,
           consentVersion: row.consent_version,
+          researchConsent: row.research_consent,
         })),
       },
       200,
@@ -312,22 +314,38 @@ export default {
             origin,
           );
         }
+        if (
+          typeof body.researchConsent !== "string" ||
+          body.researchConsent.length > 150 ||
+          body.researchConsent.trim().length < 8
+        ) {
+          return jsonResponse(
+            {
+              error:
+                "Please confirm that you are 18 or older and consent to research storage.",
+            },
+            400,
+            origin,
+          );
+        }
         const byKey = Object.fromEntries(
           assessment.scores.map((score) => [score.key, score]),
         );
         const submittedAt = new Date().toISOString();
         const stored = await env.DB.prepare(`
           INSERT INTO submissions (
-            submitted_at, consent_version, answers_json, scores_json,
+            submitted_at, consent_version, research_consent,
+            answers_json, scores_json,
             mood_score, mood_band, anxiety_score, anxiety_band,
             stress_score, stress_band, experiences_score, experiences_band,
             personality_score, personality_band, functioning_score,
             safety_support, unusual_experience_referral
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
           .bind(
             submittedAt,
-            "storage-consent-v1",
+            "research-consent-v2",
+            body.researchConsent.trim(),
             JSON.stringify(body.answers),
             JSON.stringify(assessment.scores),
             byKey.mood.score,
