@@ -90,6 +90,20 @@ async function addAiSummary(assessment, ai) {
         : result?.response ?? result?.choices?.[0]?.message?.content;
     if (typeof summary !== "string" || !summary.trim()) {
       assessment.aiSummaryStatus = "empty-response";
+      assessment.aiSummaryDiagnostic = {
+        resultType: typeof result,
+        resultKeys:
+          result && typeof result === "object" ? Object.keys(result) : [],
+        responseType: typeof result?.response,
+        choicesType: typeof result?.choices,
+        choicesLength: Array.isArray(result?.choices)
+          ? result.choices.length
+          : null,
+        firstChoiceKeys:
+          result?.choices?.[0] && typeof result.choices[0] === "object"
+            ? Object.keys(result.choices[0])
+            : [],
+      };
       return assessment;
     }
     assessment.aiSummary = summary.trim().slice(0, 800);
