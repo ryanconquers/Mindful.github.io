@@ -3,10 +3,12 @@
 A responsive web version of the Integrated Mental Health Screening Questionnaire.
 The Node.js backend and optional Cloudflare Worker validate responses,
 calculate provisional scale bands, and return transparent, rule-based supportive
-guidance. They do not persist responses or collect names, IDs, or contact
-details. This is not a trained machine-learning model: the questionnaire has no
-validated training data, and fabricating a predictive model would be
-inappropriate for a mental-health screening tool.
+guidance and answer summaries. Summaries describe response counts and
+provisional questionnaire bands; they are not AI-generated. The services do not
+persist responses or collect names, IDs, or contact details. This is not a
+trained machine-learning model: the questionnaire has no validated training
+data, and fabricating a predictive model would be inappropriate for a
+mental-health screening tool.
 
 ## Run locally
 

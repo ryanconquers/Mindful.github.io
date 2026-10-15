@@ -23,6 +23,8 @@ test("calculates scale totals, provisional bands, and descriptive tendencies", (
     ],
   );
   assert.equal(result.scores[4].band, "Low");
+  assert.match(result.scores[0].summary, /7 of 7 statements/);
+  assert.match(result.scores[4].summary, /not a validated personality measure/);
   assert.equal(result.safetySupport, false);
   assert.equal(result.clinicianRecommendation, true);
   assert.match(result.guidance[0], /qualified mental health professional/);
@@ -99,5 +101,7 @@ test("serves the site and validates assessment submissions", async (context) => 
   });
   assert.equal(valid.status, 200);
   assert.equal(valid.headers.get("cache-control"), "no-store");
-  assert.equal((await valid.json()).scores.length, 5);
+  const result = await valid.json();
+  assert.equal(result.scores.length, 5);
+  assert.match(result.scores[0].summary, /did not mark any/);
 });

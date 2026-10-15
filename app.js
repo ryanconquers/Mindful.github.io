@@ -207,7 +207,10 @@ function renderResults(data) {
     const fill = document.createElement("span");
     fill.style.width = `${(score.score / score.max) * 100}%`;
     meter.append(fill);
-    card.append(name, total, band, meter);
+    const summary = document.createElement("p");
+    summary.className = "score-summary";
+    summary.textContent = score.summary;
+    card.append(name, total, band, meter, summary);
     scoreList.append(card);
   }
   results.append(scoreList);

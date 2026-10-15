@@ -537,6 +537,14 @@ h1 {
   background: #86a993;
 }
 
+.score-summary {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .functioning-row {
   display: flex;
   justify-content: space-between;

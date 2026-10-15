@@ -44,12 +44,26 @@ export function validateAnswers(answers) {
 export function calculateAssessment(answers) {
   const scores = scales.map((scale) => {
     const score = scale.items.reduce((total, item) => total + answers[item], 0);
+    const frequentResponses = scale.items.filter(
+      (item) => answers[item] >= 2,
+    ).length;
+    const frequencyDescription =
+      frequentResponses === 0
+        ? `You did not mark any of these ${scale.items.length} statements as occurring more than half the time.`
+        : `You marked ${frequentResponses} of ${scale.items.length} statements as occurring more than half the time.`;
+    const summary =
+      scale.key === "personality"
+        ? `${frequencyDescription} These draft statements are descriptive only; they are not a validated personality measure or a clinical label.`
+        : scale.key === "experiences"
+          ? `${frequencyDescription} This section is not diagnostic; if any of these experiences concern you, consider discussing them with a qualified professional.`
+          : `${frequencyDescription} The provisional ${bandFor(score, scale.max).toLowerCase()} band is only a reflection of this questionnaire's unvalidated scoring.`;
     return {
       name: scale.name,
       key: scale.key,
       score,
       max: scale.max,
       band: bandFor(score, scale.max),
+      summary,
     };
   });
   const safetySupport =
