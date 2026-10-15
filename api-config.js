@@ -1,0 +1,1 @@
+window.MIND_CHECKIN_API_BASE = "";

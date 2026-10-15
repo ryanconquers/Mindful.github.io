@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <meta
+      name="description"
+      content="A private, non-diagnostic mental wellness screening questionnaire."
+    />
+    <title>Mindful Check-in | Mental Wellness Screening</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./api-config.js"></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Mindful Check-in home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>mindful<span class="brand-light"> check-in</span></span>
+      </a>
+      <span class="header-note">A moment for your wellbeing</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> YOUR WELLBEING, IN FOCUS</p>
+        <h1 id="page-title">A little check-in<br />can go a long way.</h1>
+        <p class="intro-copy">
+          Take a few quiet minutes to reflect on how you’ve been feeling. Your
+          answers are for your own reflection.
+        </p>
+        <div class="intro-meta">
+          <span><span aria-hidden="true">◷</span> About 5 minutes</span>
+          <span><span aria-hidden="true">♡</span> Private by design</span>
+        </div>
+      </section>
+
+      <section class="notice" aria-label="Important information">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <p>
+          <strong>A note before you begin</strong>
+          This questionnaire is a screening tool, not a diagnosis. Its scoring
+          bands are provisional and have not been clinically validated.
+        </p>
+      </section>
+
+      <section class="form-shell" aria-labelledby="form-title">
+        <div class="form-heading">
+          <div>
+            <p class="eyebrow">YOUR CHECK-IN</p>
+            <h2 id="form-title">How have you been feeling?</h2>
+          </div>
+          <span class="question-count"><span id="answered-count">0</span> / 25 answered</span>
+        </div>
+
+        <div class="progress-track" aria-hidden="true">
+          <span id="progress-fill"></span>
+        </div>
+        <p class="scale-key">
+          For questions 1–24, choose how often each statement has felt true for
+          you. Questions 1–21 refer to the last 2 weeks; 22–24 to the past few
+          months.
+        </p>
+
+        <form id="assessment-form">
+          <div id="question-groups"></div>
+          <div class="submit-row">
+            <p>Your responses are used to calculate your results and are not saved.</p>
+            <button class="button button-primary" type="submit">
+              See my check-in <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          <p id="form-error" class="error-message" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section id="results" class="results-shell" aria-live="polite" hidden></section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Take what’s useful. Leave what isn’t.</p>
+      <p>Mindful Check-in · AI-Driven Psychometric Assessment in Mental Health · NMIMS</p>
+      <p>Not a substitute for professional care.</p>
+    </footer>
+  </body>
+</html>
