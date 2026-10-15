@@ -219,7 +219,7 @@ test("Worker saves only after explicit consent and protects admin records", asyn
   assert.equal(saved.saved, true);
   assert.equal(saved.submissionId, 42);
   assert.equal(inserted.length, 1);
-  assert.equal(inserted[0].values[1], "research-consent-v2");
+  assert.equal(inserted[0].values[1], "research-consent-v3");
   assert.equal(
     inserted[0].values[2],
     "I confirm I am 18 or older and consent to research storage.",

@@ -344,7 +344,7 @@ export default {
         `)
           .bind(
             submittedAt,
-            "research-consent-v2",
+            "research-consent-v3",
             body.researchConsent.trim(),
             JSON.stringify(body.answers),
             JSON.stringify(assessment.scores),

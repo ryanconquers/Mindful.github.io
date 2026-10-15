@@ -1,10 +1,12 @@
 # Mindful Check-in
 
-Mindful Check-in is a responsive website for the **Integrated Mental Health
-Screening Questionnaire**. A respondent can answer 25 questions, see provisional
-section scores and supportive guidance, and optionally request an AI-written
-reflection. Adults who explicitly consent may also save an anonymous response
-for the site operator's research dashboard.
+Mindful Check-in is a responsive website for a 25-item questionnaire about
+mental and emotional well-being, including mood, anxiety, stress, and
+day-to-day experiences. It is an NMIMS student academic project. A respondent
+can see provisional section scores and supportive guidance, and optionally
+request an AI-generated reflection. Adults who explicitly consent may also
+save a response for the password-protected research dashboard. The site does
+not ask for names or contact details.
 
 > **Important:** This is a demonstration and research-support project, not a
 > diagnostic or treatment service. The questionnaire is a new composite; its
@@ -58,7 +60,8 @@ Operator's browser
 1. The browser renders the questionnaire and gathers 25 values from `0` to `3`.
    Names and contact details are not requested.
 2. On submission, the browser sends the answers, optional AI preference, and
-   separate optional storage consent to the API.
+   separate optional storage consent to the API. Cloudflare processes answers
+   to calculate results.
 3. The API validates that every item is an integer from `0` to `3`, calculates
    scores, and returns the result with `Cache-Control: no-store`.
 4. If storage consent is absent, the Worker does not insert a record. If
@@ -74,6 +77,10 @@ Operator's browser
 
 The questionnaire remains usable without either consent. AI consent and
 response-storage consent are independent and both unchecked by default.
+Responses are not shown publicly or to other participants. Saved responses are
+available to the project team through the password-protected dashboard and are
+retained until deleted. Cloudflare hosts the site, database, and optional AI
+service and processes information to provide those services.
 
 ## Questionnaire and scoring
 
@@ -92,7 +99,10 @@ questionnaire; they are **not validated clinical cutoffs**.
 
 Item 18 is a separate safety flag; it is not included in a scale score. Item 25
 is a separate functioning indicator. Personality results are descriptive only,
-not a severity rating or clinical label.
+not a severity rating or clinical label. Questionnaire wording has been
+simplified following student feedback; this changes the draft instrument, so
+the wording and cutoffs must be reviewed and validated before research or
+clinical conclusions are drawn.
 
 ### Safety and referral rules
 
@@ -112,10 +122,10 @@ not a severity rating or clinical label.
 
 - **No storage consent:** answers are sent to the backend to calculate results,
   but are not inserted into the application's D1 database.
-- **Storage consent:** an adult respondent explicitly agrees to save anonymous
-  item responses, scores, support flags, and submission timestamp for research.
-  No name or contact field is stored. The dashboard records the consent text
-  and consent version with the submission.
+- **Storage consent:** an adult respondent explicitly agrees to save item
+  responses, scores, support flags, and submission timestamp for research.
+  No name or contact field is requested or stored. The dashboard records the
+  consent text and consent version with the submission.
 - **Retention:** stored rows have no automatic expiry. The operator must
   periodically review, export if appropriate, and delete data when no longer
   needed. The dashboard's delete-all action permanently removes all submission
@@ -227,8 +237,9 @@ Required configuration (never put secret values in Git or chat):
 > “Mindful Check-in is a responsive mental-wellness questionnaire and research
 > demonstration. The frontend is plain HTML, CSS, and JavaScript hosted on
 > GitHub Pages. A Cloudflare Worker validates answers and calculates transparent
-> provisional scores. With separate explicit consent, anonymous answers may be
-> stored in Cloudflare D1 and reviewed in a password-protected dashboard. A
+> provisional scores. With separate explicit consent, responses are stored
+> without requested names or contact details in Cloudflare D1 and reviewed in
+> a password-protected dashboard. A
 > separate optional Workers AI feature generates a short reflection from
 > aggregate core-scale scores only. This is not a diagnostic tool, and the
 > instrument and cutoffs need validation before clinical or research use.”

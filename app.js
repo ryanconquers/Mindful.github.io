@@ -1,73 +1,73 @@
 const groups = [
   {
     title: "Mood",
-    description: "Over the last 2 weeks, how often have you been bothered by:",
+    description: "Thinking about the last 2 weeks, how often did you experience each of these?",
     items: [
-      "Little interest or pleasure in doing things",
-      "Feeling down, depressed, or hopeless",
-      "Trouble falling or staying asleep, or sleeping too much",
-      "Feeling tired or having little energy",
-      "Feeling bad about yourself, or that you are a failure or have let yourself or your family down",
-      "Trouble concentrating on things, such as reading or watching TV",
-      "Feeling that you had nothing to look forward to",
+      "Had little interest or enjoyment in things you usually like",
+      "Felt low, sad, or hopeless",
+      "Had trouble falling asleep, staying asleep, or slept more than usual",
+      "Felt tired or low on energy",
+      "Felt bad about yourself, or felt you had let yourself or your family down",
+      "Found it hard to focus, for example while reading or watching TV",
+      "Felt you had little to look forward to",
     ],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Anxiety",
-    description: "Over the last 2 weeks, how often have you been bothered by:",
+    description: "Thinking about the last 2 weeks, how often did you experience each of these?",
     items: [
-      "Feeling nervous, anxious, or on edge",
-      "Not being able to stop or control worrying",
-      "Worrying too much about different things",
-      "Trouble relaxing",
-      "Feeling afraid as if something awful might happen",
-      "Feeling close to panic",
+      "Felt nervous, anxious, or on edge",
+      "Found it hard to stop or control your worries",
+      "Worried a lot about different things",
+      "Found it hard to relax",
+      "Felt afraid that something bad might happen",
+      "Felt close to panicking",
     ],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Stress",
-    description: "Over the last 2 weeks, how often have you been bothered by:",
+    description: "Thinking about the last 2 weeks, how often did you experience each of these?",
     items: [
-      "Finding it hard to wind down",
-      "Tending to over-react to situations",
-      "Feeling that you were using a lot of nervous energy",
-      "Being intolerant of anything that kept you from getting on with what you were doing",
+      "Found it hard to calm down",
+      "Reacted more strongly than you wanted to situations",
+      "Felt full of nervous energy",
+      "Felt irritated when something stopped you from getting on with what you were doing",
     ],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Safety",
-    description: "Over the last 2 weeks, how often have you been bothered by:",
-    items: ["Thoughts that you would be better off dead, or of hurting yourself in some way"],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    description: "Thinking about the last 2 weeks, how often did you experience this?",
+    items: ["Had thoughts that you would be better off dead, or thoughts of hurting yourself"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Unusual experiences",
-    description: "Over the last 2 weeks, how often have you been bothered by:",
+    description: "Thinking about the last 2 weeks, how often did you experience each of these?",
     items: [
-      "Hearing or seeing things that other people around you could not",
-      "Feeling that people were watching you, following you, or trying to harm you without a clear reason",
-      "Feeling emotionally flat, or pulling away from people and losing interest in being around others",
+      "Heard or saw things that people around you did not seem to hear or see",
+      "Felt that people were watching, following, or trying to hurt you without a clear reason",
+      "Felt emotionally numb, pulled away from people, or lost interest in spending time with others",
     ],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Personality tendencies",
-    description: "Thinking about the past few months, how often is each of these true for you?",
+    description: "Thinking about the past few months, how often have these things been true for you?",
     items: [
-      "My mood changes quickly and strongly, or I get easily overwhelmed by emotions",
-      "I avoid close relationships and prefer to keep people at a distance",
-      "I act on impulse without thinking about the consequences",
+      "My mood changes quickly or strongly, or I feel overwhelmed by emotions",
+      "I avoid close relationships and prefer to keep some distance from others",
+      "I sometimes act without thinking about what might happen next",
     ],
-    choices: ["Not at all", "Several days", "More than half the days", "Nearly every day"],
+    choices: ["Not at all", "A few days", "More than half the days", "Nearly every day"],
   },
   {
     title: "Functioning",
     description:
-      "How difficult have these problems made it to do your work, take care of things at home, or get along with other people?",
-    items: ["Overall, these problems have made things difficult for me"],
+      "How difficult have these experiences made it to work or study, manage things at home, or get along with other people?",
+    items: ["Overall, these experiences have made daily life difficult for me"],
     choices: ["Not at all difficult", "Somewhat difficult", "Very difficult", "Extremely difficult"],
   },
 ];
@@ -189,13 +189,13 @@ function renderResults(data) {
   if (data.aiSummaryStatus === "available" && data.aiSummary) {
     addAlert(
       "ai-summary",
-      "Optional AI-written reflection",
+      "Optional AI-generated reflection",
       data.aiSummary,
     );
     const aiDisclaimer = document.createElement("p");
     aiDisclaimer.className = "ai-disclaimer";
     aiDisclaimer.textContent =
-      "Generated from Mood, Anxiety, and Stress totals and counts only. AI can be inaccurate; this is not a diagnosis or clinical advice.";
+      "Generated from combined Mood, Anxiety, and Stress totals and counts only. It may be inaccurate and is not a diagnosis or professional advice.";
     results.append(aiDisclaimer);
   } else if (
     ["unavailable", "binding-unavailable", "empty-response", "model-error"].includes(
@@ -204,14 +204,14 @@ function renderResults(data) {
   ) {
     addAlert(
       "ai-summary-status",
-      "AI reflection unavailable",
-      "The optional AI reflection could not be generated right now. Your rule-based scores and summaries are still available.",
+      "Generated reflection unavailable",
+      "The optional generated reflection could not be created right now. Your scores and summaries are still available.",
     );
   } else if (data.aiSummaryStatus === "skipped-safety") {
     addAlert(
       "ai-summary-status",
-      "AI reflection not used",
-      "To prioritize your safety, the optional AI reflection was not generated. The supportive safety information above is based on your response.",
+      "Generated reflection not used",
+      "To prioritize your safety, the optional generated reflection was not created. The supportive safety information above is based on your response.",
     );
   }
 
@@ -329,7 +329,7 @@ form.addEventListener("submit", async (event) => {
         aiSummary: aiSummaryRequested,
         consentToStore: storageConsent,
         researchConsent: storageConsent
-          ? "18+ research storage consent v2"
+          ? "18+ research storage consent v3"
           : undefined,
       }),
     });

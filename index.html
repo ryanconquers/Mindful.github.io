@@ -8,7 +8,7 @@
       name="description"
       content="A private, non-diagnostic mental wellness screening questionnaire."
     />
-    <title>Mindful Check-in | Mental Wellness Screening</title>
+    <title>Mindful Check-in | Mental and Emotional Well-being</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./api-config.js"></script>
     <script src="./app.js" defer></script>
@@ -25,23 +25,29 @@
     <main>
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow"><span class="eyebrow-dot"></span> YOUR WELLBEING, IN FOCUS</p>
-        <h1 id="page-title">A little check-in<br />can go a long way.</h1>
+        <h1 id="page-title">A check-in on your mental and emotional well-being.</h1>
         <p class="intro-copy">
-          Take a few quiet minutes to reflect on how you’ve been feeling. Your
-          answers are for your own reflection.
+          We are NMIMS students conducting this academic project to learn about
+          mood, anxiety, stress, and day-to-day experiences. Taking part is your
+          choice. This questionnaire is for reflection and research, not diagnosis.
         </p>
         <div class="intro-meta">
           <span><span aria-hidden="true">◷</span> About 5 minutes</span>
-          <span><span aria-hidden="true">♡</span> Private by design</span>
+          <span><span aria-hidden="true">♡</span> Your choice to take part</span>
         </div>
       </section>
 
-      <section class="notice" aria-label="Important information">
+      <section class="notice" aria-label="Important information and privacy">
         <span class="notice-icon" aria-hidden="true">i</span>
         <p>
-          <strong>A note before you begin</strong>
-          This questionnaire is a screening tool, not a diagnosis. Its scoring
-          bands are provisional and have not been clinically validated.
+          <strong>Before you begin: privacy and important information</strong>
+          We do not ask for your name or contact details. Cloudflare processes
+          your answers to calculate results. Your answers are not shown publicly
+          or to other participants. If you choose to save them, the project team
+          can view them in a password-protected dashboard for academic analysis;
+          saved responses are kept until deleted. Cloudflare provides the
+          website, database, and optional AI service. This questionnaire is not
+          a diagnosis, and its wording and scoring have not been clinically validated.
         </p>
       </section>
 
@@ -68,8 +74,8 @@
               <dd>It didn’t happen</dd>
             </div>
             <div class="answer-scale-item">
-              <dt><span class="answer-scale-number">1</span> Several days</dt>
-              <dd>It happened occasionally</dd>
+              <dt><span class="answer-scale-number">1</span> A few days</dt>
+              <dd>It happened on a few days</dd>
             </div>
             <div class="answer-scale-item">
               <dt><span class="answer-scale-number">2</span> More than half the days</dt>
@@ -87,7 +93,8 @@
         </section>
         <p class="scale-key">
           Questions 1–21 refer to the last 2 weeks; questions 22–24 refer to
-          the past few months.
+          the past few months. You can leave either consent option unchecked
+          and still receive your results.
         </p>
 
         <form id="assessment-form">
@@ -95,12 +102,12 @@
             <label class="storage-consent-label" for="storage-consent">
               <input id="storage-consent" name="storageConsent" type="checkbox" />
               <span>
-                <strong>Optional: save my anonymous answers for analysis</strong>
-                I confirm I am 18 or older and consent to saving my individual
-                answers and scores, without my name or contact details, in a
-                private dashboard for research. I understand the site operator
-                can view the data, and it will be kept until manually deleted.
-                I can leave this unchecked and still get my results.
+                <strong>Optional: save my answers for academic analysis</strong>
+                I confirm I am 18 or older and agree to save my answers and
+                scores without asking for my name or contact details. The
+                project team can view saved responses in a password-protected
+                dashboard. They will be kept until deleted. I can leave this
+                unchecked and still get my results.
               </span>
             </label>
           </fieldset>
@@ -108,19 +115,18 @@
             <label class="ai-consent-label" for="ai-summary-consent">
               <input id="ai-summary-consent" name="aiSummary" type="checkbox" />
               <span>
-                <strong>Optional: add an AI-written reflection</strong>
-                If you opt in, Cloudflare Workers AI receives only your Mood,
-                Anxiety, and Stress section totals and counts—not individual
-                answers, safety responses, unusual-experience responses,
-                personality responses, or identifying details. AI text may be
-                inaccurate and is not clinical advice. Leave unchecked to use
-                the standard rule-based summaries without an AI model.
+                <strong>Optional: add an AI-generated reflection</strong>
+                If you choose this, Cloudflare's AI service receives only
+                combined totals and counts for Mood, Anxiety, and Stress—not
+                your individual answers or identity details. The reflection
+                may be inaccurate and is not professional advice. Leave this
+                unchecked to skip it.
               </span>
             </label>
           </fieldset>
           <div id="question-groups"></div>
           <div class="submit-row">
-            <p>Saving is optional. Without your consent, your answers are only used to calculate your results.</p>
+            <p>Saving and the AI reflection are optional. Your answers are used to calculate your results.</p>
             <button class="button button-primary" type="submit">
               See my check-in <span aria-hidden="true">→</span>
             </button>
@@ -134,7 +140,7 @@
 
     <footer class="site-footer">
       <p>Take what’s useful. Leave what isn’t.</p>
-      <p>Mindful Check-in · AI-Driven Psychometric Assessment in Mental Health · NMIMS</p>
+      <p>Mindful Check-in · NMIMS student academic project</p>
       <p>Not a substitute for professional care.</p>
       <p><a href="./admin.html">Administrator dashboard</a></p>
     </footer>
