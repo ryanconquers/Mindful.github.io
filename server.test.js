@@ -117,6 +117,7 @@ test("Worker AI summary uses only consented aggregate core-scale facts", async (
   );
   assert.equal(JSON.stringify(promptData).includes('"18"'), false);
   assert.equal(input.max_completion_tokens, 256);
+  assert.deepEqual(input.chat_template_kwargs, { enable_thinking: false });
 });
 
 test("Worker skips AI when the safety rule is triggered", async () => {

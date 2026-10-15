@@ -83,6 +83,7 @@ async function addAiSummary(assessment, ai) {
       ],
       max_completion_tokens: 256,
       temperature: 0.2,
+      chat_template_kwargs: { enable_thinking: false },
     });
     const summary =
       typeof result === "string"
@@ -90,32 +91,6 @@ async function addAiSummary(assessment, ai) {
         : result?.response ?? result?.choices?.[0]?.message?.content;
     if (typeof summary !== "string" || !summary.trim()) {
       assessment.aiSummaryStatus = "empty-response";
-      assessment.aiSummaryDiagnostic = {
-        resultType: typeof result,
-        resultKeys:
-          result && typeof result === "object" ? Object.keys(result) : [],
-        responseType: typeof result?.response,
-        choicesType: typeof result?.choices,
-        choicesLength: Array.isArray(result?.choices)
-          ? result.choices.length
-          : null,
-        finishReason: result?.choices?.[0]?.finish_reason,
-        firstChoiceKeys:
-          result?.choices?.[0] && typeof result.choices[0] === "object"
-            ? Object.keys(result.choices[0])
-            : [],
-        firstMessageKeys:
-          result?.choices?.[0]?.message &&
-          typeof result.choices[0].message === "object"
-            ? Object.keys(result.choices[0].message)
-            : [],
-        messageContentType: typeof result?.choices?.[0]?.message?.content,
-        messageContentLength:
-          typeof result?.choices?.[0]?.message?.content === "string"
-            ? result.choices[0].message.content.length
-            : null,
-        hasRefusal: Boolean(result?.choices?.[0]?.message?.refusal),
-      };
       return assessment;
     }
     assessment.aiSummary = summary.trim().slice(0, 800);
