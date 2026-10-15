@@ -2,6 +2,13 @@ name: Deploy assessment API
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "assessment.js"
+      - "worker.js"
+      - "wrangler.toml"
+      - ".github/workflows/deploy-api.yml"
 
 permissions:
   contents: read

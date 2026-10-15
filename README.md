@@ -37,7 +37,8 @@ GitHub Pages on GitHub Free.
    `CLOUDFLARE_ACCOUNT_ID`. Never put these values in source files or share them
    in chat.
 3. Push the project to the repository's `main` branch, then run the
-   **Deploy assessment API** workflow from the Actions tab. Cloudflare's
+   **Deploy assessment API** workflow from the Actions tab. Once configured, it
+   also deploys automatically when API files change on `main`. Cloudflare's
    dashboard shows the deployed Worker URL.
 4. The Pages workflow is configured with this project's deployed Worker URL.
    If you deploy a different Worker, set a repository **Actions variable**
@@ -48,8 +49,8 @@ GitHub Pages on GitHub Free.
 
 The site workflow supports both root and repository-path Pages URLs. The Worker
 accepts browser requests from GitHub Pages origins and returns no-store
-responses. The API workflow is manual so it can be configured and deployed
-before the site is shared. Check both Actions workflows complete successfully
+responses. Both workflows can be run manually and deploy automatically on
+relevant `main` changes. Check both Actions workflows complete successfully
 before sharing the Pages URL. Deployment still requires access to the GitHub
 repository and Cloudflare account; the repository must be connected and its
 Actions secrets configured by its owner.

@@ -96,7 +96,11 @@ test("Worker AI summary uses only consented aggregate core-scale facts", async (
         async run(selectedModel, parameters) {
           model = selectedModel;
           input = parameters;
-          return { response: "A neutral reflection, not a diagnosis." };
+          return {
+            choices: [
+              { message: { content: "A neutral reflection, not a diagnosis." } },
+            ],
+          };
         },
       },
     },
@@ -112,7 +116,7 @@ test("Worker AI summary uses only consented aggregate core-scale facts", async (
     ["Mood", "Anxiety", "Stress"],
   );
   assert.equal(JSON.stringify(promptData).includes('"18"'), false);
-  assert.equal(input.max_tokens, 100);
+  assert.equal(input.max_completion_tokens, 100);
 });
 
 test("Worker skips AI when the safety rule is triggered", async () => {

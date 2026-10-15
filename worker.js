@@ -81,10 +81,13 @@ async function addAiSummary(assessment, ai) {
           content: JSON.stringify({ sectionSummaries: scoreFacts }),
         },
       ],
-      max_tokens: 100,
+      max_completion_tokens: 100,
       temperature: 0.2,
     });
-    const summary = result?.response;
+    const summary =
+      typeof result === "string"
+        ? result
+        : result?.response ?? result?.choices?.[0]?.message?.content;
     if (typeof summary !== "string" || !summary.trim()) {
       assessment.aiSummaryStatus = "unavailable";
       return assessment;
