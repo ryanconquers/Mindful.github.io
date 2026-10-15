@@ -2,6 +2,15 @@ name: Deploy GitHub Pages site
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "styles.css"
+      - "app.js"
+      - "assessment.js"
+      - "api-config.js"
+      - ".github/workflows/deploy-site.yml"
 
 permissions:
   contents: read

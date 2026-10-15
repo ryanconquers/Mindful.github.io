@@ -43,15 +43,16 @@ GitHub Pages on GitHub Free.
    If you deploy a different Worker, set a repository **Actions variable**
    named `API_BASE_URL` to its full URL (no trailing slash).
 5. In repository Settings → Pages, select **GitHub Actions** as the build and
-   deployment source. Run the **Deploy GitHub Pages site** workflow.
+   deployment source. The **Deploy GitHub Pages site** workflow runs on site
+   changes to `main`; it can also be run manually from Actions.
 
 The site workflow supports both root and repository-path Pages URLs. The Worker
 accepts browser requests from GitHub Pages origins and returns no-store
-responses. Both workflows are manual so the site is not published before its
-API endpoint and deployment secrets have been configured. Check both Actions
-workflows complete successfully before sharing the Pages URL. Deployment still
-requires access to the GitHub repository and Cloudflare account; the repository
-must be connected and its Actions secrets configured by its owner.
+responses. The API workflow is manual so it can be configured and deployed
+before the site is shared. Check both Actions workflows complete successfully
+before sharing the Pages URL. Deployment still requires access to the GitHub
+repository and Cloudflare account; the repository must be connected and its
+Actions secrets configured by its owner.
 
 ## Important use limitations
 
