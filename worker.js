@@ -3,7 +3,6 @@ import { calculateAssessment, validateAnswers } from "./assessment.js";
 const maxBodyBytes = 16 * 1024;
 const aiModel = "@cf/google/gemma-4-26b-a4b-it";
 const sessionLifetimeMs = 12 * 60 * 60 * 1000;
-const verificationLifetimeMs = 24 * 60 * 60 * 1000;
 const resetLifetimeMs = 60 * 60 * 1000;
 const allowedOriginPattern =
   /^https:\/\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.github\.io$/i;
@@ -125,14 +124,11 @@ async function accountForRequest(request, env) {
     .first();
 }
 
-async function sendAccountEmail(env, email, token, purpose) {
+async function sendAccountEmail(env, email, token) {
   const siteUrl = accountEmailSiteUrl(env);
-  siteUrl.searchParams.set(purpose === "verify" ? "verify" : "reset", token);
-  const isVerification = purpose === "verify";
-  const subject = isVerification
-    ? "Verify your Mindful Check-in account"
-    : "Reset your Mindful Check-in password";
-  const linkLabel = isVerification ? "Verify email address" : "Choose a new password";
+  siteUrl.searchParams.set("reset", token);
+  const subject = "Reset your Mindful Check-in password";
+  const linkLabel = "Choose a new password";
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -143,12 +139,8 @@ async function sendAccountEmail(env, email, token, purpose) {
       from: env.EMAIL_FROM,
       to: [email],
       subject,
-      text: `${linkLabel}: ${siteUrl.toString()}\n\nThis link expires in ${
-        isVerification ? "24 hours" : "1 hour"
-      }. If you did not request this, you can ignore this email.`,
-      html: `<p>${linkLabel}:</p><p><a href="${siteUrl.toString()}">${linkLabel}</a></p><p>This link expires in ${
-        isVerification ? "24 hours" : "1 hour"
-      }. If you did not request this, you can ignore this email.</p>`,
+      text: `${linkLabel}: ${siteUrl.toString()}\n\nThis link expires in 1 hour. If you did not request this, you can ignore this email.`,
+      html: `<p>${linkLabel}:</p><p><a href="${siteUrl.toString()}">${linkLabel}</a></p><p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>`,
     }),
   });
   if (!response.ok) {
@@ -165,7 +157,7 @@ function accountEmailSiteUrl(env) {
     typeof env?.SITE_URL !== "string"
   ) {
     throw authError(
-      "Email verification and password recovery are not configured. Ask the site operator to configure Resend.",
+      "Password recovery email is not configured. Ask the site operator to configure Resend.",
       503,
     );
   }
@@ -184,20 +176,19 @@ function accountEmailSiteUrl(env) {
   return siteUrl;
 }
 
-async function issueAccountToken(env, accountId, email, purpose) {
+async function issuePasswordResetToken(env, accountId, email) {
   const token = createToken();
   const tokenHash = await hashToken(token);
-  const lifetime = purpose === "verify" ? verificationLifetimeMs : resetLifetimeMs;
-  await env.DB.prepare("DELETE FROM account_tokens WHERE account_id = ? AND purpose = ?")
-    .bind(accountId, purpose)
+  await env.DB.prepare("DELETE FROM account_tokens WHERE account_id = ? AND purpose = 'reset'")
+    .bind(accountId)
     .run();
   await env.DB.prepare(`
     INSERT INTO account_tokens (account_id, purpose, token_hash, expires_at)
     VALUES (?, ?, ?, ?)
   `)
-    .bind(accountId, purpose, tokenHash, expiresAt(lifetime))
+    .bind(accountId, "reset", tokenHash, expiresAt(resetLifetimeMs))
     .run();
-  await sendAccountEmail(env, email, token, purpose);
+  await sendAccountEmail(env, email, token);
 }
 
 async function handleAuth(request, env, url, origin) {
@@ -219,67 +210,29 @@ async function handleAuth(request, env, url, origin) {
     ) {
       throw authError("Enter a valid email and a password of 12–128 characters.");
     }
-    accountEmailSiteUrl(env);
     let account = await env.DB.prepare(
       "SELECT id, email, email_verified FROM accounts WHERE email = ?",
     )
       .bind(email)
       .first();
-    if (account?.email_verified) {
-      return jsonResponse(
-        {
-          message:
-            "If this address is eligible, check your email for next steps. Already registered? Sign in instead.",
-        },
-        202,
-        origin,
-      );
+    if (account) {
+      throw authError("An account with this email already exists. Please sign in.", 409);
     }
-    if (!account) {
-      const credential = await passwordHash(password);
-      const inserted = await env.DB.prepare(`
-        INSERT INTO accounts (email, password_salt, password_hash, created_at)
-        VALUES (?, ?, ?, ?)
-      `)
-        .bind(email, credential.salt, credential.hash, new Date().toISOString())
-        .run();
-      account = { id: inserted.meta?.last_row_id, email, email_verified: 0 };
-      if (!account.id) {
-        throw authError("The account could not be created. Please try again.", 503);
-      }
-    } else {
-      const credential = await passwordHash(password);
-      await env.DB.prepare(`
-        UPDATE accounts SET password_salt = ?, password_hash = ? WHERE id = ?
-      `)
-        .bind(credential.salt, credential.hash, account.id)
-        .run();
+    const credential = await passwordHash(password);
+    const inserted = await env.DB.prepare(`
+      INSERT INTO accounts (email, password_salt, password_hash, email_verified, created_at)
+      VALUES (?, ?, ?, 1, ?)
+    `)
+      .bind(email, credential.salt, credential.hash, new Date().toISOString())
+      .run();
+    if (!inserted.meta?.last_row_id) {
+      throw authError("The account could not be created. Please try again.", 503);
     }
-    await issueAccountToken(env, account.id, email, "verify");
     return jsonResponse(
-      { message: "Check your email for a verification link. It expires in 24 hours." },
-      202,
+      { message: "Account created. Sign in with your email and password." },
+      201,
       origin,
     );
-  }
-
-  if (url.pathname === "/api/auth/verify" && request.method === "POST") {
-    if (typeof body.token !== "string" || body.token.length > 100) {
-      throw authError("This verification link is invalid or has expired.", 400);
-    }
-    const tokenHash = await hashToken(body.token);
-    const token = await env.DB.prepare(`
-      SELECT id, account_id FROM account_tokens
-      WHERE token_hash = ? AND purpose = 'verify' AND expires_at > ?
-    `)
-      .bind(tokenHash, new Date().toISOString())
-      .first();
-    if (!token) throw authError("This verification link is invalid or has expired.", 400);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").bind(token.account_id),
-      env.DB.prepare("DELETE FROM account_tokens WHERE id = ?").bind(token.id),
-    ]);
-    return jsonResponse({ message: "Email verified. You can now sign in." }, 200, origin);
   }
 
   if (url.pathname === "/api/auth/login" && request.method === "POST") {
@@ -306,7 +259,7 @@ async function handleAuth(request, env, url, origin) {
       throw authError("Email or password was not accepted.", 401);
     }
     if (!account.email_verified) {
-      throw authError("Verify your email address before signing in.", 403);
+      throw authError("This account is inactive. Please contact the site operator.", 403);
     }
     const sessionToken = createToken();
     const sessionExpiresAt = expiresAt(sessionLifetimeMs);
@@ -343,11 +296,11 @@ async function handleAuth(request, env, url, origin) {
         .bind(email)
         .first();
       if (account) {
-        await issueAccountToken(env, account.id, account.email, "reset");
+        await issuePasswordResetToken(env, account.id, account.email);
       }
     }
     return jsonResponse(
-      { message: "If a verified account matches, a password-reset link will be sent." },
+      { message: "If an account matches, a password-reset link will be sent." },
       202,
       origin,
     );
@@ -741,7 +694,7 @@ export default {
       const account = await accountForRequest(request, env);
       if (!account) {
         return jsonResponse(
-          { error: "Please sign in with a verified account to continue." },
+          { error: "Please sign in with a registered account to continue." },
           401,
           origin,
         );

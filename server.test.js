@@ -82,7 +82,7 @@ function createAccountDatabase() {
             password_salt,
             password_hash,
             created_at,
-            email_verified: 0,
+            email_verified: 1,
           };
           accounts.push(account);
           return { meta: { last_row_id: account.id } };
@@ -449,7 +449,7 @@ test("Worker refuses consented storage if the database is not configured", async
   assert.match((await response.json()).error, /were not saved/);
 });
 
-test("participant registration, verification, login, consented linking, and password reset", async () => {
+test("participant registration without email verification, login, consented linking, and password reset", async () => {
   const database = createAccountDatabase();
   const environment = {
     DB: database,
@@ -485,16 +485,18 @@ test("participant registration, verification, login, consented linking, and pass
   };
 
   try {
-    const missingEmailSetup = await worker.fetch(
+    const noEmailSetupDatabase = createAccountDatabase();
+    const registrationWithoutEmail = await worker.fetch(
       new Request("https://api.example.workers.dev/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "person@example.com", password: "a-long-password" }),
       }),
-      { DB: database },
+      { DB: noEmailSetupDatabase },
     );
-    assert.equal(missingEmailSetup.status, 503);
-    assert.equal(database.accounts.length, 0);
+    assert.equal(registrationWithoutEmail.status, 201);
+    assert.equal(noEmailSetupDatabase.accounts[0].email_verified, 1);
+    assert.equal(noEmailSetupDatabase.accounts.length, 1);
 
     const invalidRegistration = await call("/api/auth/register", {
       email: "person@example.com",
@@ -506,23 +508,21 @@ test("participant registration, verification, login, consented linking, and pass
       email: "Person@example.com",
       password: "initial-long-password",
     });
-    assert.equal(registration.status, 202);
+    assert.equal(registration.status, 201);
     assert.equal(database.accounts[0].email, "person@example.com");
+    assert.equal(database.accounts[0].email_verified, 1);
     assert.notEqual(database.accounts[0].password_hash, "initial-long-password");
     assert.equal((await registration.json()).token, undefined);
-    const verificationToken = emailToken(sentEmails[0], "verify");
-    assert.ok(verificationToken);
+    assert.equal(sentEmails.length, 0);
 
-    const unverifiedLogin = await call("/api/auth/login", {
+    const duplicateRegistration = await call("/api/auth/register", {
       email: "person@example.com",
-      password: "initial-long-password",
+      password: "another-long-password",
     });
-    assert.equal(unverifiedLogin.status, 403);
+    assert.equal(duplicateRegistration.status, 409);
 
-    const verified = await call("/api/auth/verify", { token: verificationToken });
-    assert.equal(verified.status, 200);
     const login = await call("/api/auth/login", {
-      email: "PERSON@example.com",
+      email: "person@example.com",
       password: "initial-long-password",
     });
     assert.equal(login.status, 200);
@@ -574,7 +574,7 @@ test("participant registration, verification, login, consented linking, and pass
       email: "person@example.com",
     });
     assert.equal(recovery.status, 202);
-    const resetToken = emailToken(sentEmails[1], "reset");
+    const resetToken = emailToken(sentEmails[0], "reset");
     assert.ok(resetToken);
     const reset = await call("/api/auth/reset-password", {
       token: resetToken,
