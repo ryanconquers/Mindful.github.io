@@ -87,8 +87,9 @@ Operator's browser
    generated from fixed synthetic data that is independent of their answers.
    The AI response is optional and may be unavailable.
 6. The operator dashboard authenticates each admin API request and can show
-   participant account details, aggregate band counts, inspect the latest 500
-   saved submissions (including emails only for explicitly linked records),
+   participant account details, aggregate band counts and visual score-band
+   distributions, a 14-day saved-submission activity chart, inspect the latest
+   500 saved submissions (including emails only for explicitly linked records),
    download those submissions as JSON, or delete all saved records. Use
    **Refresh dashboard** to load submissions saved after the dashboard was opened.
 

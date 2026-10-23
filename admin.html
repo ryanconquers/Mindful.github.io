@@ -70,6 +70,22 @@
           access to the dashboard password and delete records when no longer needed.
         </p>
         <div id="admin-metrics" class="admin-metrics"></div>
+        <h3 class="admin-subheading">Saved response analytics</h3>
+        <p class="admin-note">
+          Score-band distribution uses counts from all saved responses. Daily
+          submission activity is calculated from the latest 500 records loaded below.
+          These provisional questionnaire bands are descriptive, not clinical measures.
+        </p>
+        <div class="admin-chart-grid">
+          <section class="admin-chart-card" aria-labelledby="admin-band-chart-title">
+            <h4 id="admin-band-chart-title">Score-band distribution</h4>
+            <div id="admin-band-charts" class="admin-band-charts"></div>
+          </section>
+          <section class="admin-chart-card" aria-labelledby="admin-trend-chart-title">
+            <h4 id="admin-trend-chart-title">Saved submissions per day</h4>
+            <div id="admin-submission-trend" class="admin-submission-trend"></div>
+          </section>
+        </div>
         <h3 class="admin-subheading">Registered participants</h3>
         <p class="admin-note">
           Registered accounts are listed below. A participant’s email is linked to

@@ -6,6 +6,8 @@ const dashboard = document.querySelector("#admin-dashboard");
 const dashboardStatus = document.querySelector("#admin-dashboard-status");
 const refreshButton = document.querySelector("#admin-refresh");
 const metrics = document.querySelector("#admin-metrics");
+const bandCharts = document.querySelector("#admin-band-charts");
+const submissionTrend = document.querySelector("#admin-submission-trend");
 const accountRows = document.querySelector("#admin-account-rows");
 const bandRows = document.querySelector("#admin-band-rows");
 const records = document.querySelector("#admin-records");
@@ -19,6 +21,7 @@ const sectionNames = {
   experiences: "Unusual experiences",
   personality: "Personality tendencies",
 };
+const scoreBands = ["Low", "Mild", "Moderate", "High"];
 
 function apiUrl(path) {
   const base = (window.MIND_CHECKIN_API_BASE || "").replace(/\/+$/, "");
@@ -112,7 +115,7 @@ function renderBandRows(rows, total) {
     const counts = new Map(
       (bySection.get(name) ?? []).map(({ band, count }) => [band, count]),
     );
-    for (const band of ["Low", "Mild", "Moderate", "High"]) {
+    for (const band of scoreBands) {
       const row = document.createElement("tr");
       const sectionCell = document.createElement("td");
       sectionCell.textContent = band === "Low" ? name : "";
@@ -123,6 +126,122 @@ function renderBandRows(rows, total) {
       row.append(sectionCell, bandCell, countCell);
       bandRows.append(row);
     }
+  }
+}
+
+function renderBandCharts(rows) {
+  bandCharts.replaceChildren();
+  const bySection = new Map();
+  for (const { category, band, count } of rows) {
+    if (!bySection.has(category)) bySection.set(category, new Map());
+    bySection.get(category).set(band, Number(count) || 0);
+  }
+
+  for (const name of Object.values(sectionNames)) {
+    const counts = bySection.get(name) ?? new Map();
+    const total = scoreBands.reduce(
+      (sum, band) => sum + (counts.get(band) ?? 0),
+      0,
+    );
+    const row = document.createElement("div");
+    row.className = "admin-band-chart-row";
+    const label = document.createElement("div");
+    label.className = "admin-band-chart-label";
+    label.textContent = name;
+    const track = document.createElement("div");
+    track.className = "admin-stacked-bar";
+    track.setAttribute(
+      "role",
+      "img",
+    );
+    track.setAttribute(
+      "aria-label",
+      `${name}: ${scoreBands.map((band) => `${band} ${counts.get(band) ?? 0}`).join(", ")}`,
+    );
+    for (const band of scoreBands) {
+      const count = counts.get(band) ?? 0;
+      const segment = document.createElement("span");
+      segment.className = `admin-stacked-segment band-${band.toLowerCase()}`;
+      segment.style.width = `${total ? (count / total) * 100 : 0}%`;
+      if (count) segment.title = `${band}: ${count}`;
+      track.append(segment);
+    }
+    const legend = document.createElement("div");
+    legend.className = "admin-chart-legend";
+    for (const band of scoreBands) {
+      const item = document.createElement("span");
+      item.className = "admin-chart-legend-item";
+      const swatch = document.createElement("i");
+      swatch.className = `admin-chart-swatch band-${band.toLowerCase()}`;
+      swatch.setAttribute("aria-hidden", "true");
+      const percentage = total
+        ? Math.round(((counts.get(band) ?? 0) / total) * 100)
+        : 0;
+      const text = document.createElement("span");
+      text.textContent = `${band} ${counts.get(band) ?? 0} (${percentage}%)`;
+      item.append(swatch, text);
+      legend.append(item);
+    }
+    row.append(label, track, legend);
+    bandCharts.append(row);
+  }
+}
+
+function renderSubmissionTrend(submissions) {
+  submissionTrend.replaceChildren();
+  if (submissions.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "admin-chart-empty";
+    empty.textContent = "No saved submissions in the latest 500 records.";
+    submissionTrend.append(empty);
+    return;
+  }
+  const now = new Date();
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (13 - index));
+    return date;
+  });
+  const formatDateKey = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const countsByDay = new Map(days.map((date) => [formatDateKey(date), 0]));
+  for (const submission of submissions) {
+    const date = new Date(submission.submittedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    const key = formatDateKey(date);
+    if (countsByDay.has(key)) {
+      countsByDay.set(key, countsByDay.get(key) + 1);
+    }
+  }
+  const maximum = Math.max(1, ...countsByDay.values());
+  for (const [index, date] of days.entries()) {
+    const count = countsByDay.get(formatDateKey(date)) ?? 0;
+    const column = document.createElement("div");
+    column.className = "admin-trend-column";
+    const barArea = document.createElement("div");
+    barArea.className = "admin-trend-bar-area";
+    const bar = document.createElement("span");
+    bar.className = "admin-trend-bar";
+    bar.setAttribute("role", "img");
+    bar.style.height = `${count ? Math.max((count / maximum) * 100, 4) : 0}%`;
+    bar.setAttribute(
+      "aria-label",
+      `${date.toLocaleDateString()}: ${count} saved ${count === 1 ? "submission" : "submissions"}`,
+    );
+    bar.title = `${date.toLocaleDateString()}: ${count}`;
+    const value = document.createElement("span");
+    value.className = "admin-trend-count";
+    value.textContent = count || "";
+    barArea.append(bar, value);
+    const dateLabel = document.createElement("span");
+    dateLabel.className = "admin-trend-date";
+    dateLabel.textContent =
+      index % 2 === 0 || index === days.length - 1
+        ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : "";
+    column.append(barArea, dateLabel);
+    submissionTrend.append(column);
   }
 }
 
@@ -190,10 +309,12 @@ async function loadDashboard() {
   renderMetrics(summaryData.summary);
   renderAccounts(accountData.accounts);
   renderBandRows(summaryData.bands, summaryData.summary.total);
+  renderBandCharts(summaryData.bands);
+  renderSubmissionTrend(submissionData.submissions);
   renderRecords(submissionData.submissions);
   dashboard.hidden = false;
   loginShell.hidden = true;
-  dashboardStatus.textContent = `Dashboard refreshed ${new Date().toLocaleTimeString()}.`;
+  dashboardStatus.textContent = `Dashboard refreshed ${new Date().toLocaleTimeString()}. Showing ${submissionData.submissions.length} of ${summaryData.summary.total} saved submissions.`;
   dashboardStatus.hidden = false;
 }
 
@@ -236,6 +357,8 @@ document.querySelector("#admin-logout").addEventListener("click", () => {
   metrics.replaceChildren();
   accountRows.replaceChildren();
   bandRows.replaceChildren();
+  bandCharts.replaceChildren();
+  submissionTrend.replaceChildren();
   records.replaceChildren();
   exportedSubmissions = [];
   passwordInput.focus();
