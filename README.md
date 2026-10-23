@@ -38,7 +38,7 @@ linked to their email only when they explicitly opt in at submission time.
 | Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, manages participant accounts, optionally invokes AI, writes consented records, and serves protected admin API routes |
 | Database | Cloudflare D1 (SQLite-compatible) | Stores participant account credentials, expiring password-reset tokens and sessions, and individual submissions only after explicit consent |
 | Transactional email | Resend HTTPS API | Sends password-reset links; requires a verified sender domain |
-| Optional generative AI | Google Gemini API, `gemini-3.8-flash` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
+| Optional generative AI | Google Gemini API, `gemini-3.5-flash-lite` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
 | Deployment | GitHub Actions, Wrangler | Publishes the static site and deploys the Worker and D1 migrations |
 | Tests | Node.js built-in test runner (`node:test`) | Tests scoring, validation, consented storage, dashboard authorization, and AI input boundaries |
 

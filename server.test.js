@@ -275,7 +275,7 @@ test("Gemini summary uses only consented aggregate core-scale facts", async () =
   assert.equal(result.aiSummary, "A neutral reflection, not a diagnosis.");
   assert.equal(
     endpoint,
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
   );
   assert.equal(requestOptions.method, "POST");
   assert.equal(requestOptions.headers["x-goog-api-key"], "test-gemini-key");
