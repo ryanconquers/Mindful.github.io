@@ -155,6 +155,30 @@ function addAlert(className, title, content) {
   results.append(alert);
 }
 
+function geminiFailureMessage(status) {
+  const messages = {
+    unavailable:
+      "The Gemini API key is not available to the Worker. Check that the Cloudflare secret is named GEMINI_API_KEY and is set for this Worker.",
+    "provider-key-error":
+      "Google rejected the API key. Check that GEMINI_API_KEY is an active Gemini API key with no extra spaces.",
+    "provider-access-error":
+      "Google blocked this project or key. Check that the Gemini API is enabled and that API-key restrictions allow it.",
+    "provider-quota-error":
+      "The Gemini project’s quota or billing limit was reached. Check its quota and billing status.",
+    "provider-model-error":
+      "Google reports that the configured Gemini model is unavailable to this project.",
+    "provider-request-error":
+      "Google rejected the Gemini request. The site operator should check the Worker request configuration.",
+    "provider-error":
+      "Google’s Gemini service returned an error. Try again later.",
+    "network-error":
+      "The Worker could not connect to Gemini. Try again later or check Worker outbound connectivity.",
+    "empty-response":
+      "Gemini responded but returned no reflection. Try again later.",
+  };
+  return messages[status] ?? "Gemini could not generate the demo reflection.";
+}
+
 function renderResults(data) {
   results.replaceChildren();
   const topLine = document.createElement("div");
@@ -302,9 +326,7 @@ function renderResults(data) {
           demoButton.remove();
           demoNote.remove();
         } else {
-          throw new Error(
-            "Gemini demo unavailable. Please ask the site operator to check the API configuration.",
-          );
+          throw new Error(geminiFailureMessage(demo.aiSummaryStatus));
         }
       } catch (error) {
         demoNote.textContent = error.message;
