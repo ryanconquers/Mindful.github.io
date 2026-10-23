@@ -184,7 +184,8 @@ a substitute for legal or research-ethics review.
 │   ├── 0002_add_research_consent.sql # Consent record column
 │   ├── 0003_create_participant_accounts.sql # Accounts, tokens, sessions, linkage
 │   ├── 0004_disable_email_verification.sql # Activate existing accounts
-│   └── 0005_remove_account_smoke_test.sql # Remove temporary deployment-test account
+│   ├── 0005_remove_account_smoke_test.sql # Remove first temporary test account
+│   └── 0006_remove_account_smoke_test.sql # Remove final temporary test account
 ├── .github/workflows/
 │   ├── deploy-site.yml               # GitHub Pages build/deployment
 │   └── deploy-api.yml                # Worker deployment and D1 migrations
