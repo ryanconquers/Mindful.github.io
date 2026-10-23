@@ -180,9 +180,8 @@ document.querySelector("#account-logout").addEventListener("click", async () => 
 });
 
 const query = new URLSearchParams(window.location.search);
-const verificationToken = query.get("verify");
 resetToken = query.get("reset") || "";
-if (verificationToken || resetToken) {
+if (resetToken) {
   window.history.replaceState(null, "", window.location.pathname);
 }
 
@@ -193,14 +192,9 @@ if (resetToken) {
   forgotView.hidden = true;
   resetView.hidden = false;
   showAccountMessage("Use at least 12 characters for your new password.");
-} else if (verificationToken) {
-  showLogin("Verifying your email address…");
-  authRequest("/api/auth/verify", { token: verificationToken })
-    .then((result) => showLogin(result.message))
-    .catch((error) => showLogin(error.message, true));
 }
 
-if (!resetToken && !verificationToken && currentToken()) {
+if (!resetToken && currentToken()) {
   showAccountMessage("Checking your sign-in…");
   loginView.hidden = true;
   authRequest("/api/auth/me", undefined, currentToken())
@@ -209,7 +203,7 @@ if (!resetToken && !verificationToken && currentToken()) {
       sessionStorage.removeItem(sessionKey);
       showLogin(`${error.message} Please sign in again.`, true);
     });
-} else if (!resetToken && !verificationToken) {
+} else if (!resetToken) {
   const notice = sessionStorage.getItem("mindful-signout-notice") || "";
   sessionStorage.removeItem("mindful-signout-notice");
   showLogin(notice, Boolean(notice));
