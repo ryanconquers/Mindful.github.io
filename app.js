@@ -196,6 +196,14 @@ function renderResults(data) {
   topLine.append(headingGroup);
   results.append(topLine);
 
+  if (!data.saved) {
+    addAlert(
+      "storage-status",
+      "This response was not saved to the admin dashboard",
+      "To share a response with the project team, select “Optional: save my answers for academic analysis” before submitting. Your results are still shown here.",
+    );
+  }
+
   if (data.safetySupport) {
     addAlert(
       "safety",

@@ -248,7 +248,7 @@ test("Gemini summary uses only consented aggregate core-scale facts", async () =
       ],
     });
   };
-  const answers = answersWith(1);
+  const answers = answersWith(2);
   answers[18] = 0;
   const response = await worker.fetch(
     new Request("https://api.example.workers.dev/api/assessment", {
@@ -286,8 +286,14 @@ test("Gemini summary uses only consented aggregate core-scale facts", async () =
     promptData.sectionSummaries.map(({ section }) => section),
     ["Mood", "Anxiety", "Stress"],
   );
+  assert.deepEqual(
+    promptData.sectionSummaries.map(({ oftenReportedCount }) => oftenReportedCount),
+    [7, 6, 4],
+  );
   assert.equal(JSON.stringify(promptData).includes('"18"'), false);
   assert.equal(input.generationConfig.maxOutputTokens, 128);
+  assert.match(input.systemInstruction.parts[0].text, /specific, gentle reflection/);
+  assert.match(input.systemInstruction.parts[0].text, /actual Mood, Anxiety, and Stress section names/);
 });
 
 test("Gemini summary reports missing API configuration without calling a provider", async () => {

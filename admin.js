@@ -3,6 +3,8 @@ const loginShell = document.querySelector(".admin-login-shell");
 const passwordInput = document.querySelector("#admin-password");
 const errorMessage = document.querySelector("#admin-error");
 const dashboard = document.querySelector("#admin-dashboard");
+const dashboardStatus = document.querySelector("#admin-dashboard-status");
+const refreshButton = document.querySelector("#admin-refresh");
 const metrics = document.querySelector("#admin-metrics");
 const accountRows = document.querySelector("#admin-account-rows");
 const bandRows = document.querySelector("#admin-band-rows");
@@ -53,7 +55,7 @@ function renderMetrics(summary) {
   metrics.replaceChildren();
   const definitions = [
     ["Saved submissions", "total"],
-    ["Verified participant accounts", "account_count"],
+    ["Registered participant accounts", "account_count"],
     ["Mood: Moderate / High", "mood_moderate_high"],
     ["Anxiety: Moderate / High", "anxiety_moderate_high"],
     ["Stress: Moderate / High", "stress_moderate_high"],
@@ -80,7 +82,7 @@ function renderAccounts(accounts) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 3;
-    cell.textContent = "No verified participant accounts yet.";
+    cell.textContent = "No participant accounts yet.";
     row.append(cell);
     accountRows.append(row);
     return;
@@ -191,6 +193,8 @@ async function loadDashboard() {
   renderRecords(submissionData.submissions);
   dashboard.hidden = false;
   loginShell.hidden = true;
+  dashboardStatus.textContent = `Dashboard refreshed ${new Date().toLocaleTimeString()}.`;
+  dashboardStatus.hidden = false;
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -211,10 +215,24 @@ loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+refreshButton.addEventListener("click", async () => {
+  refreshButton.disabled = true;
+  dashboardStatus.textContent = "Refreshing dashboard…";
+  dashboardStatus.hidden = false;
+  try {
+    await loadDashboard();
+  } catch (error) {
+    dashboardStatus.textContent = `Refresh failed: ${error.message}`;
+  } finally {
+    refreshButton.disabled = false;
+  }
+});
+
 document.querySelector("#admin-logout").addEventListener("click", () => {
   dashboardPassword = "";
   dashboard.hidden = true;
   loginShell.hidden = false;
+  dashboardStatus.hidden = true;
   metrics.replaceChildren();
   accountRows.replaceChildren();
   bandRows.replaceChildren();

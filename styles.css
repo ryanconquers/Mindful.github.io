@@ -632,7 +632,8 @@ h1 {
 }
 
 .result-alert.ai-summary,
-.result-alert.ai-summary-status {
+.result-alert.ai-summary-status,
+.result-alert.storage-status {
   border: 1px solid #d4ddeb;
   background: #f1f5fa;
   color: #3e4d62;

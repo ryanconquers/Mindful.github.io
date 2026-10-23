@@ -73,7 +73,8 @@ Operator's browser
    to calculate results.
 3. The API validates that every item is an integer from `0` to `3`, calculates
    scores, and returns the result with `Cache-Control: no-store`.
-4. If storage consent is absent, the Worker does not insert a record. If
+4. If storage consent is absent, the Worker does not insert a record, and the
+   results page explicitly says the response is not on the dashboard. If
    selected, it validates the participant's stated age/storage consent and
    inserts the answers and results into D1. A signed-in participant's email is
    attached only when the participant accepts the additional account-link
@@ -88,7 +89,8 @@ Operator's browser
 6. The operator dashboard authenticates each admin API request and can show
    participant account details, aggregate band counts, inspect the latest 500
    saved submissions (including emails only for explicitly linked records),
-   download those submissions as JSON, or delete all saved records.
+   download those submissions as JSON, or delete all saved records. Use
+   **Refresh dashboard** to load submissions saved after the dashboard was opened.
 
 The questionnaire remains usable without either consent. AI consent and
 response-storage consent are independent and both unchecked by default.

@@ -558,7 +558,7 @@ async function addAiSummary(assessment, apiKey) {
         systemInstruction: {
           parts: [
             {
-              text: "Write a brief, gentle reflection (at most 60 words) about the aggregate questionnaire data provided. The questionnaire is unvalidated. Do not diagnose, label, infer causes, predict outcomes, or recommend treatment. Do not describe the provisional bands as clinical facts. Use nonjudgmental language and state that this is only a reflection, not a diagnosis. Do not give crisis advice; a separate safety message handles that.",
+              text: "Write a specific, gentle reflection in 2 or 3 sentences and at most 55 words. Use the actual Mood, Anxiety, and Stress section names and the supplied provisional bands and often-reported counts. Describe which section stands out or, if the pattern is similar across sections, say that clearly. Tie each observation to the supplied facts; never invent symptoms, causes, changes over time, or personal circumstances. End with one brief, open reflection question or a low-risk everyday activity relevant to the pattern. Do not diagnose, label, predict outcomes, recommend treatment, present provisional bands as clinical facts, or give crisis advice. The page already displays the non-diagnostic disclaimer, so do not add generic disclaimer or filler text.",
             },
           ],
         },

@@ -53,10 +53,16 @@
             <p class="eyebrow">PRIVATE VIEW</p>
             <h2>Submission overview</h2>
           </div>
-          <button id="admin-logout" class="button button-secondary" type="button">
-            Sign out
-          </button>
+          <div class="admin-actions">
+            <button id="admin-refresh" class="button button-secondary" type="button">
+              Refresh dashboard
+            </button>
+            <button id="admin-logout" class="button button-secondary" type="button">
+              Sign out
+            </button>
+          </div>
         </div>
+        <p id="admin-dashboard-status" class="admin-note" role="status" aria-live="polite" hidden></p>
         <p class="admin-warning">
           Saved responses are sensitive. Account-linked responses include the
           participant’s email only when they explicitly consented to link them.
@@ -66,7 +72,7 @@
         <div id="admin-metrics" class="admin-metrics"></div>
         <h3 class="admin-subheading">Registered participants</h3>
         <p class="admin-note">
-          Verified accounts are listed below. A participant’s email is linked to
+          Registered accounts are listed below. A participant’s email is linked to
           a response only when they checked the save-and-link consent.
         </p>
         <div class="admin-table-wrap">
@@ -89,7 +95,7 @@
         <div class="admin-heading-row admin-records-heading">
           <div>
             <h3 class="admin-subheading">Saved submissions</h3>
-            <p class="admin-note">Individual answers and any consented account links are visible below. Latest 500 shown.</p>
+            <p class="admin-note">Only responses participants explicitly chose to save appear here. Click “Refresh dashboard” to load newer submissions. Individual answers and any consented account links are visible below. Latest 500 shown.</p>
           </div>
           <div class="admin-actions">
             <button id="admin-export" class="button button-secondary" type="button">
