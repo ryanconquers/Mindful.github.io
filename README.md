@@ -81,7 +81,10 @@ Operator's browser
 5. If AI consent is selected and no safety trigger is active, the Worker sends
    the AI provider aggregate facts for Mood, Anxiety, and Stress. Raw answers
    and safety, unusual-experience, and personality responses are not sent to the
-   model. The AI response is optional and may be unavailable.
+   model. If a safety trigger is active, the real-response reflection is skipped;
+   a signed-in participant can instead request a clearly labeled Gemini demo
+   generated from fixed synthetic data that is independent of their answers.
+   The AI response is optional and may be unavailable.
 6. The operator dashboard authenticates each admin API request and can show
    participant account details, aggregate band counts, inspect the latest 500
    saved submissions (including emails only for explicitly linked records),
@@ -121,7 +124,9 @@ clinical conclusions are drawn.
 ### Safety and referral rules
 
 - Item 18 above zero, or item 5 or 7 equal to 3: show a supportive safety
-  message before results; the AI reflection is skipped.
+  message before results; do not send real-response data for an AI reflection.
+  Participants may use the separate Gemini demo, which sends fixed synthetic
+  sample scores only.
 - Item 19 or 20 equal to 2 or 3: recommend discussing the experience with a
   qualified professional.
 - Moderate or High provisional Mood, Anxiety, or Stress band: recommend
@@ -146,10 +151,12 @@ clinical conclusions are drawn.
   needed. The dashboard's delete-all action permanently removes all submission
   rows.
 - **AI consent:** checked separately. If selected, only aggregate Mood, Anxiety,
-  and Stress facts go to Google's Gemini API; this request is not sent if the safety rule
-  is triggered. Review Google's current API data-use terms before collecting
-  real responses; the application cannot promise the provider retains no
-  request metadata.
+  and Stress facts go to Google's Gemini API when the safety rule is not
+  triggered. For a safety-triggered result, an explicit demo action can send
+  fixed synthetic sample scores instead; it is labeled as a demo and is not
+  based on that participant's answers. Review Google's current API data-use
+  terms before collecting real responses; the application cannot promise the
+  provider retains no request metadata.
 - **Hosting operations:** GitHub, Cloudflare, Resend, browsers, and network
   providers may process operational metadata under their own terms. Unlinked
   saved submissions omit the account email, but timestamps and operational

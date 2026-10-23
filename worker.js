@@ -658,6 +658,43 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/ai-demo") {
+      if (origin && !corsHeaders(origin)["Access-Control-Allow-Origin"]) {
+        return jsonResponse({ error: "Origin not allowed." }, 403, origin);
+      }
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ error: "Method not allowed." }, 405, origin);
+      }
+      const account = await accountForRequest(request, env);
+      if (!account) {
+        return jsonResponse(
+          { error: "Please sign in with a registered account to continue." },
+          401,
+          origin,
+        );
+      }
+      const demoAnswers = Object.fromEntries(
+        Array.from({ length: 25 }, (_, index) => [index + 1, 0]),
+      );
+      demoAnswers[1] = 1;
+      demoAnswers[8] = 1;
+      demoAnswers[14] = 1;
+      const assessment = calculateAssessment(demoAnswers);
+      await addAiSummary(assessment, env?.GEMINI_API_KEY);
+      return jsonResponse(
+        {
+          aiSummary: assessment.aiSummary,
+          aiSummaryStatus: assessment.aiSummaryStatus,
+          demo: true,
+        },
+        200,
+        origin,
+      );
+    }
+
     if (url.pathname !== "/api/assessment") {
       return new Response("Not found", { status: 404 });
     }

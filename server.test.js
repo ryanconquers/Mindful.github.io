@@ -390,6 +390,65 @@ test("Worker skips Gemini when the safety rule is triggered", async () => {
   assert.equal(invoked, false);
 });
 
+test("Gemini demo uses fixed synthetic data and requires a participant session", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestOptions;
+  globalThis.fetch = async (_url, options) => {
+    requestOptions = options;
+    return Response.json({
+      candidates: [
+        {
+          content: {
+            parts: [{ text: "A sample reflection, not a diagnosis." }],
+          },
+        },
+      ],
+    });
+  };
+  try {
+    const unauthenticated = await worker.fetch(
+      new Request("https://api.example.workers.dev/api/ai-demo", {
+        method: "POST",
+        headers: { Origin: "https://example.github.io" },
+      }),
+      { GEMINI_API_KEY: "test-gemini-key" },
+    );
+    assert.equal(unauthenticated.status, 401);
+
+    const response = await worker.fetch(
+      new Request("https://api.example.workers.dev/api/ai-demo", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.github.io",
+          Authorization: "Bearer test-session-token",
+        },
+      }),
+      {
+        DB: createSessionDatabase(),
+        GEMINI_API_KEY: "test-gemini-key",
+      },
+    );
+    const result = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(result.demo, true);
+    assert.equal(result.aiSummaryStatus, "available");
+    assert.equal(result.aiSummary, "A sample reflection, not a diagnosis.");
+    const requestBody = JSON.parse(requestOptions.body);
+    const promptData = JSON.parse(requestBody.contents[0].parts[0].text);
+    assert.deepEqual(
+      promptData.sectionSummaries.map(({ section, total }) => [section, total]),
+      [
+        ["Mood", 1],
+        ["Anxiety", 1],
+        ["Stress", 1],
+      ],
+    );
+    assert.equal(JSON.stringify(requestBody).includes("test-session-token"), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker saves only after explicit consent and protects admin records", async () => {
   const inserted = [];
   const database = {

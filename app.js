@@ -259,6 +259,60 @@ function renderResults(data) {
       "Generated reflection not used",
       "To prioritize your safety, the optional generated reflection was not created. The supportive safety information above is based on your response.",
     );
+    const demoButton = document.createElement("button");
+    demoButton.type = "button";
+    demoButton.className = "button button-secondary";
+    demoButton.textContent = "Show Gemini demo with sample data";
+    demoButton.setAttribute(
+      "aria-describedby",
+      "gemini-demo-note",
+    );
+    const demoNote = document.createElement("p");
+    demoNote.id = "gemini-demo-note";
+    demoNote.className = "ai-disclaimer";
+    demoNote.textContent =
+      "The demo uses fixed sample data only and is not based on your responses.";
+    demoButton.addEventListener("click", async () => {
+      demoButton.disabled = true;
+      demoButton.textContent = "Contacting Gemini…";
+      try {
+        const apiBase = (window.MIND_CHECKIN_API_BASE || "").replace(/\/+$/, "");
+        const headers = {
+          Authorization: `Bearer ${window.MindfulAccount?.token ?? ""}`,
+        };
+        const response = await fetch(`${apiBase}/api/ai-demo`, {
+          method: "POST",
+          headers,
+        });
+        const demo = await response.json();
+        if (!response.ok) {
+          throw new Error(demo.error || "The Gemini demo could not be completed.");
+        }
+        if (demo.aiSummaryStatus === "available" && demo.aiSummary) {
+          addAlert(
+            "ai-summary",
+            "Gemini connection demo (synthetic sample data)",
+            demo.aiSummary,
+          );
+          const disclaimer = document.createElement("p");
+          disclaimer.className = "ai-disclaimer";
+          disclaimer.textContent =
+            "This demo reflection was generated from fixed sample data, not your answers. It is not a diagnosis or professional advice.";
+          results.insertBefore(disclaimer, demoButton);
+          demoButton.remove();
+          demoNote.remove();
+        } else {
+          throw new Error(
+            "Gemini demo unavailable. Please ask the site operator to check the API configuration.",
+          );
+        }
+      } catch (error) {
+        demoNote.textContent = error.message;
+        demoButton.disabled = false;
+        demoButton.textContent = "Try Gemini demo again";
+      }
+    });
+    results.append(demoButton, demoNote);
   }
 
   const scoreList = document.createElement("div");
