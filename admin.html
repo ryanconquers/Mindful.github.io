@@ -58,11 +58,25 @@
           </button>
         </div>
         <p class="admin-warning">
-          Saved responses are anonymous but sensitive. Bands are provisional and
-          unvalidated, not clinical diagnoses. Restrict access to the dashboard
-          password and delete records when no longer needed.
+          Saved responses are sensitive. Account-linked responses include the
+          participant’s email only when they explicitly consented to link them.
+          Bands are provisional and unvalidated, not clinical diagnoses. Restrict
+          access to the dashboard password and delete records when no longer needed.
         </p>
         <div id="admin-metrics" class="admin-metrics"></div>
+        <h3 class="admin-subheading">Registered participants</h3>
+        <p class="admin-note">
+          Verified accounts are listed below. A participant’s email is linked to
+          a response only when they checked the save-and-link consent.
+        </p>
+        <div class="admin-table-wrap">
+          <table class="admin-band-table">
+            <thead>
+              <tr><th>Email</th><th>Registered</th><th>Linked check-ins</th></tr>
+            </thead>
+            <tbody id="admin-account-rows"></tbody>
+          </table>
+        </div>
         <h3 class="admin-subheading">Band counts by section</h3>
         <div class="admin-table-wrap">
           <table class="admin-band-table">
@@ -75,7 +89,7 @@
         <div class="admin-heading-row admin-records-heading">
           <div>
             <h3 class="admin-subheading">Saved submissions</h3>
-            <p class="admin-note">Individual answers are visible below. Latest 500 shown.</p>
+            <p class="admin-note">Individual answers and any consented account links are visible below. Latest 500 shown.</p>
           </div>
           <div class="admin-actions">
             <button id="admin-export" class="button button-secondary" type="button">

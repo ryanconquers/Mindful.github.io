@@ -44,6 +44,7 @@ const staticFiles = new Map([
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/api-config.js", ["api-config.js", "text/javascript; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/account.js", ["account.js", "text/javascript; charset=utf-8"]],
   ["/admin", ["admin.html", "text/html; charset=utf-8"]],
   ["/admin.html", ["admin.html", "text/html; charset=utf-8"]],
   ["/admin.js", ["admin.js", "text/javascript; charset=utf-8"]],
@@ -101,7 +102,7 @@ export function createAppServer() {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
       "Content-Security-Policy":
-        "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://mindful-checkin-api.ay455431.workers.dev; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
       "Cache-Control": "no-cache",
     });
     if (request.method === "HEAD") {

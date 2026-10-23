@@ -2,12 +2,15 @@ import { calculateAssessment, validateAnswers } from "./assessment.js";
 
 const maxBodyBytes = 16 * 1024;
 const aiModel = "@cf/google/gemma-4-26b-a4b-it";
+const sessionLifetimeMs = 12 * 60 * 60 * 1000;
+const verificationLifetimeMs = 24 * 60 * 60 * 1000;
+const resetLifetimeMs = 60 * 60 * 1000;
 const allowedOriginPattern =
   /^https:\/\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.github\.io$/i;
 
 function corsHeaders(origin) {
   const headers = {
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -36,6 +39,366 @@ function unauthorized(origin) {
   const response = jsonResponse({ error: "Dashboard password required." }, 401, origin);
   response.headers.set("WWW-Authenticate", 'Basic realm="Mindful Check-in admin"');
   return response;
+}
+
+function base64Url(bytes) {
+  return btoa(String.fromCharCode(...bytes))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+function fromBase64Url(value) {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
+  return Uint8Array.from(
+    atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")),
+    (character) => character.charCodeAt(0),
+  );
+}
+
+function constantTimeEqual(left, right) {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  if (leftBytes.length !== rightBytes.length) return false;
+  let difference = 0;
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index];
+  }
+  return difference === 0;
+}
+
+async function hashToken(token) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(token),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+async function passwordHash(password, salt = crypto.getRandomValues(new Uint8Array(16))) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const hash = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 150000 },
+    key,
+    256,
+  );
+  return { salt: base64Url(salt), hash: base64Url(new Uint8Array(hash)) };
+}
+
+function createToken() {
+  return base64Url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+function expiresAt(durationMs) {
+  return new Date(Date.now() + durationMs).toISOString();
+}
+
+function authError(message, status = 400) {
+  const error = new Error(message);
+  error.statusCode = status;
+  return error;
+}
+
+async function accountForRequest(request, env) {
+  const authorization = request.headers.get("Authorization") ?? "";
+  if (!authorization.startsWith("Bearer ") || !env?.DB) return null;
+  const token = authorization.slice(7);
+  if (!token || token.length > 100) return null;
+  const tokenHash = await hashToken(token);
+  return env.DB.prepare(`
+    SELECT accounts.id, accounts.email
+    FROM account_sessions
+    JOIN accounts ON accounts.id = account_sessions.account_id
+    WHERE account_sessions.token_hash = ?
+      AND account_sessions.expires_at > ?
+      AND accounts.email_verified = 1
+  `)
+    .bind(tokenHash, new Date().toISOString())
+    .first();
+}
+
+async function sendAccountEmail(env, email, token, purpose) {
+  const siteUrl = accountEmailSiteUrl(env);
+  siteUrl.searchParams.set(purpose === "verify" ? "verify" : "reset", token);
+  const isVerification = purpose === "verify";
+  const subject = isVerification
+    ? "Verify your Mindful Check-in account"
+    : "Reset your Mindful Check-in password";
+  const linkLabel = isVerification ? "Verify email address" : "Choose a new password";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: env.EMAIL_FROM,
+      to: [email],
+      subject,
+      text: `${linkLabel}: ${siteUrl.toString()}\n\nThis link expires in ${
+        isVerification ? "24 hours" : "1 hour"
+      }. If you did not request this, you can ignore this email.`,
+      html: `<p>${linkLabel}:</p><p><a href="${siteUrl.toString()}">${linkLabel}</a></p><p>This link expires in ${
+        isVerification ? "24 hours" : "1 hour"
+      }. If you did not request this, you can ignore this email.</p>`,
+    }),
+  });
+  if (!response.ok) {
+    throw authError("The account email could not be sent. Please try again later.", 502);
+  }
+}
+
+function accountEmailSiteUrl(env) {
+  if (
+    typeof env?.RESEND_API_KEY !== "string" ||
+    !env.RESEND_API_KEY ||
+    typeof env?.EMAIL_FROM !== "string" ||
+    !env.EMAIL_FROM.trim() ||
+    typeof env?.SITE_URL !== "string"
+  ) {
+    throw authError(
+      "Email verification and password recovery are not configured. Ask the site operator to configure Resend.",
+      503,
+    );
+  }
+
+  let siteUrl;
+  try {
+    siteUrl = new URL(env.SITE_URL);
+  } catch {
+    throw authError("The account email link is not configured correctly.", 503);
+  }
+  if (siteUrl.protocol !== "https:") {
+    throw authError("The account email link must use HTTPS.", 503);
+  }
+  siteUrl.search = "";
+  siteUrl.hash = "";
+  return siteUrl;
+}
+
+async function issueAccountToken(env, accountId, email, purpose) {
+  const token = createToken();
+  const tokenHash = await hashToken(token);
+  const lifetime = purpose === "verify" ? verificationLifetimeMs : resetLifetimeMs;
+  await env.DB.prepare("DELETE FROM account_tokens WHERE account_id = ? AND purpose = ?")
+    .bind(accountId, purpose)
+    .run();
+  await env.DB.prepare(`
+    INSERT INTO account_tokens (account_id, purpose, token_hash, expires_at)
+    VALUES (?, ?, ?, ?)
+  `)
+    .bind(accountId, purpose, tokenHash, expiresAt(lifetime))
+    .run();
+  await sendAccountEmail(env, email, token, purpose);
+}
+
+async function handleAuth(request, env, url, origin) {
+  if (!env?.DB) {
+    return jsonResponse({ error: "Accounts are not configured yet." }, 503, origin);
+  }
+  const body = ["POST"].includes(request.method) ? await readJson(request) : {};
+
+  if (url.pathname === "/api/auth/register" && request.method === "POST") {
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = body.password;
+    if (
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      typeof password !== "string" ||
+      password.length < 12 ||
+      password.length > 128
+    ) {
+      throw authError("Enter a valid email and a password of 12–128 characters.");
+    }
+    accountEmailSiteUrl(env);
+    let account = await env.DB.prepare(
+      "SELECT id, email, email_verified FROM accounts WHERE email = ?",
+    )
+      .bind(email)
+      .first();
+    if (account?.email_verified) {
+      return jsonResponse(
+        {
+          message:
+            "If this address is eligible, check your email for next steps. Already registered? Sign in instead.",
+        },
+        202,
+        origin,
+      );
+    }
+    if (!account) {
+      const credential = await passwordHash(password);
+      const inserted = await env.DB.prepare(`
+        INSERT INTO accounts (email, password_salt, password_hash, created_at)
+        VALUES (?, ?, ?, ?)
+      `)
+        .bind(email, credential.salt, credential.hash, new Date().toISOString())
+        .run();
+      account = { id: inserted.meta?.last_row_id, email, email_verified: 0 };
+      if (!account.id) {
+        throw authError("The account could not be created. Please try again.", 503);
+      }
+    } else {
+      const credential = await passwordHash(password);
+      await env.DB.prepare(`
+        UPDATE accounts SET password_salt = ?, password_hash = ? WHERE id = ?
+      `)
+        .bind(credential.salt, credential.hash, account.id)
+        .run();
+    }
+    await issueAccountToken(env, account.id, email, "verify");
+    return jsonResponse(
+      { message: "Check your email for a verification link. It expires in 24 hours." },
+      202,
+      origin,
+    );
+  }
+
+  if (url.pathname === "/api/auth/verify" && request.method === "POST") {
+    if (typeof body.token !== "string" || body.token.length > 100) {
+      throw authError("This verification link is invalid or has expired.", 400);
+    }
+    const tokenHash = await hashToken(body.token);
+    const token = await env.DB.prepare(`
+      SELECT id, account_id FROM account_tokens
+      WHERE token_hash = ? AND purpose = 'verify' AND expires_at > ?
+    `)
+      .bind(tokenHash, new Date().toISOString())
+      .first();
+    if (!token) throw authError("This verification link is invalid or has expired.", 400);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").bind(token.account_id),
+      env.DB.prepare("DELETE FROM account_tokens WHERE id = ?").bind(token.id),
+    ]);
+    return jsonResponse({ message: "Email verified. You can now sign in." }, 200, origin);
+  }
+
+  if (url.pathname === "/api/auth/login" && request.method === "POST") {
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (typeof body.password !== "string" || body.password.length > 128) {
+      throw authError("Email or password was not accepted.", 401);
+    }
+    const account = await env.DB.prepare(`
+      SELECT id, email, password_salt, password_hash, email_verified
+      FROM accounts WHERE email = ?
+    `)
+      .bind(email)
+      .first();
+    let matches = false;
+    if (account) {
+      const salt = fromBase64Url(account.password_salt);
+      const candidate = await passwordHash(body.password, salt);
+      matches = constantTimeEqual(candidate.hash, account.password_hash);
+    } else {
+      await passwordHash(body.password, new Uint8Array(16));
+    }
+    if (!account || !matches) {
+      throw authError("Email or password was not accepted.", 401);
+    }
+    if (!account.email_verified) {
+      throw authError("Verify your email address before signing in.", 403);
+    }
+    const sessionToken = createToken();
+    const sessionExpiresAt = expiresAt(sessionLifetimeMs);
+    await env.DB.prepare(`
+      INSERT INTO account_sessions (account_id, token_hash, expires_at, created_at)
+      VALUES (?, ?, ?, ?)
+    `)
+      .bind(
+        account.id,
+        await hashToken(sessionToken),
+        sessionExpiresAt,
+        new Date().toISOString(),
+      )
+      .run();
+    return jsonResponse(
+      {
+        token: sessionToken,
+        expiresAt: sessionExpiresAt,
+        account: { email: account.email },
+      },
+      200,
+      origin,
+    );
+  }
+
+  if (url.pathname === "/api/auth/forgot-password" && request.method === "POST") {
+    accountEmailSiteUrl(env);
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (email.length <= 254) {
+      const account = await env.DB.prepare(
+        "SELECT id, email FROM accounts WHERE email = ? AND email_verified = 1",
+      )
+        .bind(email)
+        .first();
+      if (account) {
+        await issueAccountToken(env, account.id, account.email, "reset");
+      }
+    }
+    return jsonResponse(
+      { message: "If a verified account matches, a password-reset link will be sent." },
+      202,
+      origin,
+    );
+  }
+
+  if (url.pathname === "/api/auth/reset-password" && request.method === "POST") {
+    if (
+      typeof body.token !== "string" ||
+      body.token.length > 100 ||
+      typeof body.password !== "string" ||
+      body.password.length < 12 ||
+      body.password.length > 128
+    ) {
+      throw authError("Use a valid reset link and a password of 12–128 characters.");
+    }
+    const tokenHash = await hashToken(body.token);
+    const token = await env.DB.prepare(`
+      SELECT id, account_id FROM account_tokens
+      WHERE token_hash = ? AND purpose = 'reset' AND expires_at > ?
+    `)
+      .bind(tokenHash, new Date().toISOString())
+      .first();
+    if (!token) throw authError("This reset link is invalid or has expired.", 400);
+    const credential = await passwordHash(body.password);
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE accounts SET password_salt = ?, password_hash = ? WHERE id = ?
+      `).bind(credential.salt, credential.hash, token.account_id),
+      env.DB.prepare("DELETE FROM account_tokens WHERE id = ?").bind(token.id),
+      env.DB.prepare("DELETE FROM account_sessions WHERE account_id = ?").bind(token.account_id),
+    ]);
+    return jsonResponse({ message: "Password updated. You can now sign in." }, 200, origin);
+  }
+
+  if (url.pathname === "/api/auth/me" && request.method === "GET") {
+    const account = await accountForRequest(request, env);
+    if (!account) throw authError("Please sign in again.", 401);
+    return jsonResponse({ account: { email: account.email } }, 200, origin);
+  }
+
+  if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+    const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer /, "");
+    if (token && token.length <= 100) {
+      await env.DB.prepare("DELETE FROM account_sessions WHERE token_hash = ?")
+        .bind(await hashToken(token))
+        .run();
+    }
+    return jsonResponse({ message: "Signed out." }, 200, origin);
+  }
+
+  return jsonResponse({ error: "Not found." }, 404, origin);
 }
 
 function hasAdminAccess(request, env) {
@@ -79,6 +442,7 @@ async function handleAdmin(request, env, url, origin) {
     const summary = await env.DB.prepare(`
       SELECT
         COUNT(*) AS total,
+        (SELECT COUNT(*) FROM accounts WHERE email_verified = 1) AS account_count,
         SUM(CASE WHEN mood_band IN ('Moderate', 'High') THEN 1 ELSE 0 END) AS mood_moderate_high,
         SUM(CASE WHEN anxiety_band IN ('Moderate', 'High') THEN 1 ELSE 0 END) AS anxiety_moderate_high,
         SUM(CASE WHEN stress_band IN ('Moderate', 'High') THEN 1 ELSE 0 END) AS stress_moderate_high,
@@ -115,17 +479,37 @@ async function handleAdmin(request, env, url, origin) {
     );
   }
 
+  if (url.pathname === "/api/admin/accounts" && request.method === "GET") {
+    const result = await env.DB.prepare(`
+      SELECT accounts.email, accounts.created_at,
+        COUNT(submissions.id) AS linked_submission_count
+      FROM accounts
+      LEFT JOIN submissions ON submissions.account_id = accounts.id
+      WHERE accounts.email_verified = 1
+      GROUP BY accounts.id
+      ORDER BY accounts.created_at DESC
+      LIMIT 500
+    `).all();
+    return jsonResponse(
+      { accounts: result.results ?? [] },
+      200,
+      origin,
+    );
+  }
+
   if (url.pathname === "/api/admin/submissions" && request.method === "GET") {
     const requestedLimit = Number(url.searchParams.get("limit") ?? 500);
     const limit = Number.isInteger(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 5000)
       : 500;
     const result = await env.DB.prepare(`
-      SELECT id, submitted_at, answers_json, scores_json, safety_support,
-        unusual_experience_referral, functioning_score, consent_version,
-        research_consent
+      SELECT submissions.id, submissions.submitted_at, submissions.answers_json,
+        submissions.scores_json, submissions.safety_support,
+        submissions.unusual_experience_referral, submissions.functioning_score,
+        submissions.consent_version, submissions.research_consent, accounts.email
       FROM submissions
-      ORDER BY id DESC
+      LEFT JOIN accounts ON accounts.id = submissions.account_id
+      ORDER BY submissions.id DESC
       LIMIT ?
     `)
       .bind(limit)
@@ -142,6 +526,7 @@ async function handleAdmin(request, env, url, origin) {
           functioningScore: row.functioning_score,
           consentVersion: row.consent_version,
           researchConsent: row.research_consent,
+          accountEmail: row.email,
         })),
       },
       200,
@@ -173,16 +558,16 @@ async function handleAdmin(request, env, url, origin) {
 async function readJson(request) {
   const length = Number(request.headers.get("content-length") ?? 0);
   if (length > maxBodyBytes) {
-    throw new Error("Request body is too large.");
+    throw authError("Request body is too large.", 413);
   }
   const text = await request.text();
   if (new TextEncoder().encode(text).byteLength > maxBodyBytes) {
-    throw new Error("Request body is too large.");
+    throw authError("Request body is too large.", 413);
   }
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error("Request body must be valid JSON.");
+    throw authError("Request body must be valid JSON.", 400);
   }
 }
 
@@ -248,6 +633,30 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
 
+    if (url.pathname.startsWith("/api/auth/")) {
+      if (origin && !corsHeaders(origin)["Access-Control-Allow-Origin"]) {
+        return jsonResponse({ error: "Origin not allowed." }, 403, origin);
+      }
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
+      }
+      try {
+        return await handleAuth(request, env, url, origin);
+      } catch (error) {
+        const status = error.statusCode ?? 500;
+        return jsonResponse(
+          {
+            error:
+              error.statusCode
+                ? error.message
+                : "The account request could not be completed.",
+          },
+          status,
+          origin,
+        );
+      }
+    }
+
     if (url.pathname.startsWith("/api/admin/")) {
       if (origin && !corsHeaders(origin)["Access-Control-Allow-Origin"]) {
         return jsonResponse({ error: "Origin not allowed." }, 403, origin);
@@ -305,15 +714,40 @@ export default {
           origin,
         );
       }
+      if (
+        body.linkAccount !== undefined &&
+        typeof body.linkAccount !== "boolean"
+      ) {
+        return jsonResponse(
+          { error: "The account-link consent must be true or false." },
+          400,
+          origin,
+        );
+      }
+      if (body.linkAccount === true && body.consentToStore !== true) {
+        return jsonResponse(
+          { error: "Account linking requires explicit response-storage consent." },
+          400,
+          origin,
+        );
+      }
+      if (body.consentToStore === true && !env?.DB) {
+        return jsonResponse(
+          { error: "Anonymous storage is not configured yet. Your responses were not saved." },
+          503,
+          origin,
+        );
+      }
+      const account = await accountForRequest(request, env);
+      if (!account) {
+        return jsonResponse(
+          { error: "Please sign in with a verified account to continue." },
+          401,
+          origin,
+        );
+      }
       const assessment = calculateAssessment(body.answers);
       if (body.consentToStore === true) {
-        if (!env?.DB) {
-          return jsonResponse(
-            { error: "Anonymous storage is not configured yet. Your responses were not saved." },
-            503,
-            origin,
-          );
-        }
         if (
           typeof body.researchConsent !== "string" ||
           body.researchConsent.length > 150 ||
@@ -339,12 +773,12 @@ export default {
             mood_score, mood_band, anxiety_score, anxiety_band,
             stress_score, stress_band, experiences_score, experiences_band,
             personality_score, personality_band, functioning_score,
-            safety_support, unusual_experience_referral
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            safety_support, unusual_experience_referral, account_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
           .bind(
             submittedAt,
-            "research-consent-v3",
+            "research-consent-v4",
             body.researchConsent.trim(),
             JSON.stringify(body.answers),
             JSON.stringify(assessment.scores),
@@ -361,10 +795,12 @@ export default {
             body.answers[25],
             assessment.safetySupport ? 1 : 0,
             assessment.unusualExperienceReferral ? 1 : 0,
+            body.linkAccount === true ? account.id : null,
           )
           .run();
         assessment.saved = true;
         assessment.submissionId = stored.meta?.last_row_id ?? null;
+        assessment.accountLinked = body.linkAccount === true;
       } else {
         assessment.saved = false;
       }

@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "styles.css"
       - "app.js"
+      - "account.js"
       - "admin.html"
       - "admin.js"
       - "assessment.js"
@@ -34,9 +35,9 @@ jobs:
           PAGES_VERSION: ${{ github.sha }}
         run: |
           mkdir dist
-          cp index.html admin.html styles.css app.js admin.js api-config.js dist/
+          cp index.html admin.html styles.css app.js account.js admin.js api-config.js dist/
           node -e "require('node:fs').writeFileSync('dist/api-config.js', 'window.MIND_CHECKIN_API_BASE = ' + JSON.stringify(process.env.API_BASE_URL || 'https://mindful-checkin-api.ay455431.workers.dev') + ';\\n')"
-          node -e "const fs = require('node:fs'); for (const page of ['index.html', 'admin.html']) { let html = fs.readFileSync('dist/' + page, 'utf8'); for (const file of ['styles.css', 'api-config.js', 'app.js', 'admin.js']) html = html.replaceAll('./' + file, './' + file + '?v=' + process.env.PAGES_VERSION); fs.writeFileSync('dist/' + page, html); }"
+          node -e "const fs = require('node:fs'); for (const page of ['index.html', 'admin.html']) { let html = fs.readFileSync('dist/' + page, 'utf8'); for (const file of ['styles.css', 'api-config.js', 'app.js', 'account.js', 'admin.js']) html = html.replaceAll('./' + file, './' + file + '?v=' + process.env.PAGES_VERSION); fs.writeFileSync('dist/' + page, html); }"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

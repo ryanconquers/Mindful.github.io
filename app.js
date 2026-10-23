@@ -78,6 +78,8 @@ const answeredCount = document.querySelector("#answered-count");
 const progressFill = document.querySelector("#progress-fill");
 const errorMessage = document.querySelector("#form-error");
 const results = document.querySelector("#results");
+const storageConsentInput = document.querySelector("#storage-consent");
+const accountLinkConsentInput = document.querySelector("#account-link-consent");
 let questionNumber = 1;
 
 for (const group of groups) {
@@ -131,6 +133,14 @@ function updateProgress() {
   answeredCount.textContent = answered;
   progressFill.style.width = `${(answered / 25) * 100}%`;
 }
+
+function updateAccountLinkConsent() {
+  accountLinkConsentInput.disabled = !storageConsentInput.checked;
+  if (!storageConsentInput.checked) accountLinkConsentInput.checked = false;
+}
+
+storageConsentInput.addEventListener("change", updateAccountLinkConsent);
+updateAccountLinkConsent();
 
 form.addEventListener("change", updateProgress);
 
@@ -268,7 +278,9 @@ function renderResults(data) {
   resetRow.className = "submit-row";
   const resetNote = document.createElement("p");
   resetNote.textContent = data.saved
-    ? "Your anonymous response was saved with your research-storage consent."
+    ? data.accountLinked
+      ? "Your response was saved with your research-storage and account-link consent."
+      : "Your response was saved with your research-storage consent."
     : "Your responses were used to calculate these results and were not saved.";
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -276,6 +288,7 @@ function renderResults(data) {
   resetButton.textContent = "Start again";
   resetButton.addEventListener("click", () => {
     form.reset();
+    updateAccountLinkConsent();
     updateProgress();
     results.hidden = true;
     form.closest(".form-shell").hidden = false;
@@ -316,20 +329,33 @@ form.addEventListener("submit", async (event) => {
 
   const submitButton = form.querySelector('button[type="submit"]');
   const aiSummaryRequested = document.querySelector("#ai-summary-consent").checked;
-  const storageConsent = document.querySelector("#storage-consent").checked;
+  const storageConsent = storageConsentInput.checked;
+  const linkAccountConsent = accountLinkConsentInput.checked;
   submitButton.disabled = true;
   submitButton.textContent = "Calculating…";
   try {
     const apiBase = (window.MIND_CHECKIN_API_BASE || "").replace(/\/+$/, "");
+    const headers = { "Content-Type": "application/json" };
+    const accountToken = window.MindfulAccount?.token;
+    if (accountToken) {
+      headers.Authorization = `Bearer ${accountToken}`;
+    }
     const response = await fetch(`${apiBase}/api/assessment`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         answers,
         aiSummary: aiSummaryRequested,
         consentToStore: storageConsent,
+        linkAccount:
+          storageConsent &&
+          linkAccountConsent &&
+          Boolean(accountToken) &&
+          window.MindfulAccount?.isSignedIn === true,
         researchConsent: storageConsent
-          ? "18+ research storage consent v3"
+          ? linkAccountConsent
+            ? "18+ research storage consent and explicit account-link consent v4"
+            : "18+ research storage consent; account email not linked v4"
           : undefined,
       }),
     });

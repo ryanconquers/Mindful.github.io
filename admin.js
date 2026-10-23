@@ -4,6 +4,7 @@ const passwordInput = document.querySelector("#admin-password");
 const errorMessage = document.querySelector("#admin-error");
 const dashboard = document.querySelector("#admin-dashboard");
 const metrics = document.querySelector("#admin-metrics");
+const accountRows = document.querySelector("#admin-account-rows");
 const bandRows = document.querySelector("#admin-band-rows");
 const records = document.querySelector("#admin-records");
 let dashboardPassword = "";
@@ -52,6 +53,7 @@ function renderMetrics(summary) {
   metrics.replaceChildren();
   const definitions = [
     ["Saved submissions", "total"],
+    ["Verified participant accounts", "account_count"],
     ["Mood: Moderate / High", "mood_moderate_high"],
     ["Anxiety: Moderate / High", "anxiety_moderate_high"],
     ["Stress: Moderate / High", "stress_moderate_high"],
@@ -69,6 +71,30 @@ function renderMetrics(summary) {
     caption.textContent = label;
     card.append(value, caption);
     metrics.append(card);
+  }
+}
+
+function renderAccounts(accounts) {
+  accountRows.replaceChildren();
+  if (accounts.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.textContent = "No verified participant accounts yet.";
+    row.append(cell);
+    accountRows.append(row);
+    return;
+  }
+  for (const account of accounts) {
+    const row = document.createElement("tr");
+    const email = document.createElement("td");
+    email.textContent = account.email;
+    const registered = document.createElement("td");
+    registered.textContent = new Date(account.created_at).toLocaleDateString();
+    const linked = document.createElement("td");
+    linked.textContent = account.linked_submission_count;
+    row.append(email, registered, linked);
+    accountRows.append(row);
   }
 }
 
@@ -116,9 +142,12 @@ function renderRecords(submissions) {
     const scores = Object.fromEntries(
       submission.scores.map(({ key, band }) => [key, band]),
     );
+    const accountLabel = submission.accountEmail
+      ? ` · Linked account ${submission.accountEmail}`
+      : " · Anonymous";
     summary.textContent = `#${submission.id} · ${new Date(
       submission.submittedAt,
-    ).toLocaleString()} · Mood ${scores.mood}, Anxiety ${scores.anxiety}, Stress ${scores.stress}`;
+    ).toLocaleString()}${accountLabel} · Mood ${scores.mood}, Anxiety ${scores.anxiety}, Stress ${scores.stress}`;
     const details = document.createElement("div");
     details.className = "admin-record-details";
     const scoreList = document.createElement("ul");
@@ -151,11 +180,13 @@ function renderRecords(submissions) {
 }
 
 async function loadDashboard() {
-  const [summaryData, submissionData] = await Promise.all([
+  const [summaryData, accountData, submissionData] = await Promise.all([
     adminFetch("/api/admin/summary"),
+    adminFetch("/api/admin/accounts"),
     adminFetch("/api/admin/submissions?limit=500"),
   ]);
   renderMetrics(summaryData.summary);
+  renderAccounts(accountData.accounts);
   renderBandRows(summaryData.bands, summaryData.summary.total);
   renderRecords(submissionData.submissions);
   dashboard.hidden = false;
@@ -185,6 +216,7 @@ document.querySelector("#admin-logout").addEventListener("click", () => {
   dashboard.hidden = true;
   loginShell.hidden = false;
   metrics.replaceChildren();
+  accountRows.replaceChildren();
   bandRows.replaceChildren();
   records.replaceChildren();
   exportedSubmissions = [];
@@ -197,7 +229,7 @@ document.querySelector("#admin-export").addEventListener("click", () => {
   });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(file);
-  link.download = "mindful-checkin-anonymous-submissions.json";
+  link.download = "mindful-checkin-submissions.json";
   link.click();
   URL.revokeObjectURL(link.href);
 });

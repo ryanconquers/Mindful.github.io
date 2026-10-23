@@ -5,8 +5,9 @@ mental and emotional well-being, including mood, anxiety, stress, and
 day-to-day experiences. It is an NMIMS student academic project. A respondent
 can see provisional section scores and supportive guidance, and optionally
 request an AI-generated reflection. Adults who explicitly consent may also
-save a response for the password-protected research dashboard. The site does
-not ask for names or contact details.
+save a response for the password-protected research dashboard. Participants
+must create and verify an email account and sign in to open the questionnaire.
+They may separately consent to link each saved response to that account.
 
 > **Important:** This is a demonstration and research-support project, not a
 > diagnostic or treatment service. The questionnaire is a new composite; its
@@ -22,16 +23,20 @@ not ask for names or contact details.
 
 The dashboard requires the username `admin` and the password configured as the
 Cloudflare Worker secret `ADMIN_PASSWORD`. Do not publish or share the password.
+Participants verify their email during registration, then sign in with their
+email and password. They can request a password-reset link if needed. Check-ins
+are linked to their email only when they explicitly opt in at submission time.
 
 ## Technology stack
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
-| Respondent frontend | HTML5, CSS3, vanilla JavaScript | Responsive questionnaire, accessible controls, consent choices, progress indicator, and rendering results |
+| Respondent frontend | HTML5, CSS3, vanilla JavaScript | Sign-in/registration gate, responsive questionnaire, accessible controls, consent choices, progress indicator, and rendering results |
 | Static website hosting | GitHub Pages | Publishes the questionnaire and private dashboard as static files over HTTPS |
 | Local web server | Node.js 20+, built-in HTTP and file-stream APIs | Serves the same frontend locally and provides a development assessment endpoint |
-| Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, optionally invokes AI, writes consented records, and serves protected admin API routes |
-| Database | Cloudflare D1 (SQLite-compatible) | Stores individual submissions only when respondents opt in |
+| Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, manages verified participant accounts, optionally invokes AI, writes consented records, and serves protected admin API routes |
+| Database | Cloudflare D1 (SQLite-compatible) | Stores participant account credentials, expiring verification/reset tokens and sessions, and individual submissions only after explicit consent |
+| Transactional email | Resend HTTPS API | Sends email-verification and password-reset links; requires a verified sender domain |
 | Optional generative AI | Cloudflare Workers AI, `@cf/google/gemma-4-26b-a4b-it` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
 | Deployment | GitHub Actions, Wrangler | Publishes the static site and deploys the Worker and D1 migrations |
 | Tests | Node.js built-in test runner (`node:test`) | Tests scoring, validation, consented storage, dashboard authorization, and AI input boundaries |
@@ -44,12 +49,14 @@ diagnostic machine-learning classifier trained on participant records.
 
 ```text
 Respondent's browser
-  ├── GitHub Pages: index.html, styles.css, app.js
+  ├── GitHub Pages: index.html, styles.css, account.js, app.js
   └── HTTPS POST /api/assessment
         └── Cloudflare Worker
               ├── assessment.js: validation, scoring, rules, summaries
               ├── optional Workers AI: aggregate core-scale facts only
               └── optional D1 INSERT: only after explicit storage consent
+  └── Account gate: register, verify email, sign in, reset password
+        └── Cloudflare Worker → D1 + Resend verification/reset messages
 
 Operator's browser
   └── GitHub Pages: admin.html, admin.js
@@ -57,8 +64,9 @@ Operator's browser
               └── Cloudflare Worker → D1 summary, submissions, export, delete
 ```
 
-1. The browser renders the questionnaire and gathers 25 values from `0` to `3`.
-   Names and contact details are not requested.
+1. Participants register an email and password, verify their email, and sign
+   in. Only then does the browser open the questionnaire. Account email is
+   visible to the project team in the protected dashboard.
 2. On submission, the browser sends the answers, optional AI preference, and
    separate optional storage consent to the API. Cloudflare processes answers
    to calculate results.
@@ -66,21 +74,26 @@ Operator's browser
    scores, and returns the result with `Cache-Control: no-store`.
 4. If storage consent is absent, the Worker does not insert a record. If
    selected, it validates the participant's stated age/storage consent and
-   inserts the answers and results into D1.
+   inserts the answers and results into D1. A signed-in participant's email is
+   attached only when the participant accepts the additional account-link
+   wording in that same optional consent.
 5. If AI consent is selected and no safety trigger is active, the Worker sends
    the AI provider aggregate facts for Mood, Anxiety, and Stress. Raw answers
    and safety, unusual-experience, and personality responses are not sent to the
    model. The AI response is optional and may be unavailable.
 6. The operator dashboard authenticates each admin API request and can show
-   aggregate band counts, inspect the latest 500 saved submissions, download
-   those submissions as JSON, or delete all saved records.
+   verified account details, aggregate band counts, inspect the latest 500
+   saved submissions (including emails only for explicitly linked records),
+   download those submissions as JSON, or delete all saved records.
 
 The questionnaire remains usable without either consent. AI consent and
 response-storage consent are independent and both unchecked by default.
 Responses are not shown publicly or to other participants. Saved responses are
 available to the project team through the password-protected dashboard and are
-retained until deleted. Cloudflare hosts the site, database, and optional AI
-service and processes information to provide those services.
+retained until deleted. Account email addresses are visible in the same
+dashboard's participant list. Cloudflare hosts the site, database, and optional
+AI service and processes information to provide those services; Resend handles
+verification and reset email delivery.
 
 ## Questionnaire and scoring
 
@@ -124,8 +137,9 @@ clinical conclusions are drawn.
   but are not inserted into the application's D1 database.
 - **Storage consent:** an adult respondent explicitly agrees to save item
   responses, scores, support flags, and submission timestamp for research.
-  No name or contact field is requested or stored. The dashboard records the
-  consent text and consent version with the submission.
+  Signed-in participants also explicitly agree to link their email to that
+  response; otherwise saved submissions remain unlinked. The dashboard records
+  the consent text and consent version with the submission.
 - **Retention:** stored rows have no automatic expiry. The operator must
   periodically review, export if appropriate, and delete data when no longer
   needed. The dashboard's delete-all action permanently removes all submission
@@ -135,10 +149,10 @@ clinical conclusions are drawn.
   is triggered. Review Cloudflare's current service/data terms before collecting
   real responses; the application cannot promise the provider retains no
   request metadata.
-- **Hosting operations:** GitHub, Cloudflare, browsers, and network providers
-  may process operational metadata under their own terms. “Anonymous” means
-  this app does not ask for or store direct identity fields; it is not a
-  guarantee that data can never be linked to a person.
+- **Hosting operations:** GitHub, Cloudflare, Resend, browsers, and network
+  providers may process operational metadata under their own terms. Unlinked
+  saved submissions omit the account email, but timestamps and operational
+  metadata could still make them linkable to an individual.
 - **Access:** the dashboard is not made private by its obscure URL or
   `noindex` tag. Its API routes require the Worker password. Keep that password
   secret, use a long unique value, and only share it with authorized operators.
@@ -156,6 +170,7 @@ a substitute for legal or research-ethics review.
 ├── index.html                       # Public questionnaire page
 ├── styles.css                       # Shared responsive styles
 ├── app.js                           # Questionnaire UI and results rendering
+├── account.js                       # Participant registration and session UI
 ├── assessment.js                    # Shared validation, scores, bands, guidance
 ├── server.js                        # Local Node.js development server/API
 ├── worker.js                        # Production Worker API, AI, D1, admin auth
@@ -165,7 +180,8 @@ a substitute for legal or research-ethics review.
 ├── wrangler.toml                    # Worker, Workers AI, and D1 bindings
 ├── migrations/
 │   ├── 0001_create_submissions.sql   # Initial D1 table and index
-│   └── 0002_add_research_consent.sql # Consent record column
+│   ├── 0002_add_research_consent.sql # Consent record column
+│   └── 0003_create_participant_accounts.sql # Accounts, tokens, sessions, linkage
 ├── .github/workflows/
 │   ├── deploy-site.yml               # GitHub Pages build/deployment
 │   └── deploy-api.yml                # Worker deployment and D1 migrations
@@ -178,8 +194,16 @@ All production API routes are served by the Cloudflare Worker:
 
 | Method and path | Purpose | Access |
 | --- | --- | --- |
-| `POST /api/assessment` | Validate answers, calculate results, optionally request AI and/or save | Public; storage separately requires participant consent |
+| `POST /api/assessment` | Validate answers, calculate results, optionally request AI and/or save | Verified participant session; storage separately requires consent |
+| `POST /api/auth/register` | Create pending account and send email-verification link | Public; email + password |
+| `POST /api/auth/verify` | Verify email with a one-time, expiring token | Public; verification token |
+| `POST /api/auth/login` | Create a 12-hour account session | Public; verified email + password |
+| `GET /api/auth/me` | Validate current account session | Participant bearer token |
+| `POST /api/auth/forgot-password` | Send one-time, expiring password-reset link | Public; email |
+| `POST /api/auth/reset-password` | Change password and revoke active sessions | Public; reset token |
+| `POST /api/auth/logout` | Revoke current account session | Participant bearer token |
 | `GET /api/admin/summary` | Total submissions, band counts, and support-trigger counts | Dashboard password |
+| `GET /api/admin/accounts` | List verified participant email, registration date, and explicitly linked response count | Dashboard password |
 | `GET /api/admin/submissions?limit=500` | Retrieve saved individual submissions (limit capped at 5,000) | Dashboard password |
 | `DELETE /api/admin/submissions` | Delete every saved submission; requires body `{"confirm":"DELETE ALL"}` | Dashboard password |
 
@@ -187,6 +211,13 @@ The dashboard sends HTTP Basic authentication with username `admin` and the
 password held as the Worker secret `ADMIN_PASSWORD`. The API validates it on
 each admin request; the password is not stored in the static website or
 browser local storage.
+
+Participant passwords are salted PBKDF2-SHA-256 hashes and are never returned
+to the browser. Session tokens and one-time verification/reset tokens are
+randomly generated; only SHA-256 token hashes are stored in D1. Verification
+links expire after 24 hours, reset links after one hour, and account sessions
+after 12 hours. Resetting a password revokes existing account sessions.
+Recovery responses do not reveal whether an email belongs to an account.
 
 ## Run locally
 
@@ -205,7 +236,9 @@ npm test
 The local Node server calculates scores, but it does not connect to the
 production D1 database or Cloudflare Workers AI. A local request attempting to
 save a response receives an explicit error rather than silently pretending it
-was stored.
+was stored. The static `api-config.js` currently points account requests at the
+configured Worker API, so local account registration and email actions use that
+service; use test addresses only until a separate development API is configured.
 
 ## Deployment
 
@@ -228,7 +261,18 @@ Required configuration (never put secret values in Git or chat):
 | GitHub Actions secret | `CLOUDFLARE_ACCOUNT_ID` | Selects the Cloudflare account |
 | GitHub Actions variable | `CLOUDFLARE_D1_DATABASE_ID` | Selects the D1 database |
 | Cloudflare Worker secret | `ADMIN_PASSWORD` | Dashboard password; unique and at least 20 characters |
+| Cloudflare Worker secret | `RESEND_API_KEY` | Resend API key used for verification and recovery email |
+| Cloudflare Worker variable | `EMAIL_FROM` | Sender verified with Resend, e.g. `Mindful Check-in <noreply@your-domain.example>` |
+| Cloudflare Worker variable | `SITE_URL` | HTTPS base URL for links in account emails; set in `wrangler.toml` |
 | Optional GitHub Actions variable | `API_BASE_URL` | Overrides the default Worker URL when deploying elsewhere |
+
+Before enabling participant accounts in production, create a Resend account,
+verify a sending domain, configure the `EMAIL_FROM` Worker variable, and set
+the `RESEND_API_KEY` Worker secret (for example, with
+`npx wrangler secret put RESEND_API_KEY`). Until configured, registration and
+password recovery return an explicit configuration error, and accounts cannot
+be used without email verification. Never put the Resend key in Git,
+`wrangler.toml`, or the static website.
 
 ## Viva / project presentation notes
 
@@ -237,12 +281,13 @@ Required configuration (never put secret values in Git or chat):
 > “Mindful Check-in is a responsive mental-wellness questionnaire and research
 > demonstration. The frontend is plain HTML, CSS, and JavaScript hosted on
 > GitHub Pages. A Cloudflare Worker validates answers and calculates transparent
-> provisional scores. With separate explicit consent, responses are stored
-> without requested names or contact details in Cloudflare D1 and reviewed in
-> a password-protected dashboard. A
-> separate optional Workers AI feature generates a short reflection from
-> aggregate core-scale scores only. This is not a diagnostic tool, and the
-> instrument and cutoffs need validation before clinical or research use.”
+> provisional scores. With explicit consent, responses are stored in
+> Cloudflare D1 and reviewed in a password-protected dashboard. Account
+> participants sign in with a verified email account, and a saved response is
+> linked to that email only with separate participant consent. A separate optional Workers AI
+> feature generates a short reflection from aggregate core-scale scores only.
+> This is not a diagnostic tool, and the instrument and cutoffs need validation
+> before clinical or research use.”
 
 ### Common viva questions
 
@@ -285,18 +330,22 @@ participant data, does not diagnose, and is skipped for a safety trigger.
 
 **How is participant privacy handled?**
 
-Names and contact details are not collected. Storage and AI are separate,
+Account email addresses are collected for verification, sign-in, and recovery
+and shown in the protected dashboard. Storage and AI are separate,
 unchecked-by-default choices. A submission is inserted only after storage
-consent, including an 18+ confirmation. AI receives only three aggregate scale
-summaries. Saved individual responses are sensitive, so only authorized
-operators should access the password-protected dashboard.
+consent, including an 18+ confirmation. When signed in, linking that submission
+to the account email requires the participant's explicit additional consent.
+AI receives only three aggregate scale summaries. Saved individual responses
+and account emails are sensitive, so only authorized operators should access
+the password-protected dashboard.
 
 **How is the dashboard protected?**
 
 Static HTML alone is not secret, so the Worker also protects every admin API
 route. It checks HTTP Basic credentials against the server-side Worker secret
 using a constant-time comparison for equal-length values. The password is never
-embedded in the static frontend.
+embedded in the static frontend. Participant accounts use expiring bearer
+sessions, distinct from the administrator login.
 
 **What would you improve before a real study?**
 
@@ -310,9 +359,10 @@ legal obligations, and provider data policies.
 **How is it tested?**
 
 `node:test` exercises band calculation, support flags, invalid requests, Worker
-CORS, consented/declined storage, dashboard authentication, AI input boundaries,
-and the local HTTP API. The deployed consent and dashboard flow should also be
-retested after infrastructure or policy changes.
+CORS, consented/declined storage, participant account flows, dashboard
+authentication, AI input boundaries, and the local HTTP API. The deployed
+email, consent, and dashboard flow should also be retested after infrastructure
+or policy changes.
 
 ## Limitations and responsible use
 
