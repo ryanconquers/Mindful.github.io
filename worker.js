@@ -1,7 +1,7 @@
 import { calculateAssessment, validateAnswers } from "./assessment.js";
 
 const maxBodyBytes = 16 * 1024;
-const geminiModel = "gemini-2.5-flash";
+const geminiModel = "gemini-3.8-flash";
 const geminiEndpoint =
   `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 const sessionLifetimeMs = 12 * 60 * 60 * 1000;
