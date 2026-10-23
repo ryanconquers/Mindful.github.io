@@ -207,11 +207,13 @@ function renderResults(data) {
     aiDisclaimer.textContent =
       "Generated from combined Mood, Anxiety, and Stress totals and counts only. It may be inaccurate and is not a diagnosis or professional advice.";
     results.append(aiDisclaimer);
-  } else if (
-    ["unavailable", "binding-unavailable", "empty-response", "model-error"].includes(
-      data.aiSummaryStatus,
-    )
-  ) {
+  } else if (data.aiSummaryStatus === "unavailable") {
+    addAlert(
+      "ai-summary-status",
+      "Gemini reflection not configured",
+      "The optional Gemini reflection is not configured yet. Your scores and summaries are still available.",
+    );
+  } else if (["empty-response", "model-error"].includes(data.aiSummaryStatus)) {
     addAlert(
       "ai-summary-status",
       "Generated reflection unavailable",

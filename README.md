@@ -38,7 +38,7 @@ linked to their email only when they explicitly opt in at submission time.
 | Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, manages participant accounts, optionally invokes AI, writes consented records, and serves protected admin API routes |
 | Database | Cloudflare D1 (SQLite-compatible) | Stores participant account credentials, expiring password-reset tokens and sessions, and individual submissions only after explicit consent |
 | Transactional email | Resend HTTPS API | Sends password-reset links; requires a verified sender domain |
-| Optional generative AI | Cloudflare Workers AI, `@cf/google/gemma-4-26b-a4b-it` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
+| Optional generative AI | Google Gemini API, `gemini-2.5-flash` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
 | Deployment | GitHub Actions, Wrangler | Publishes the static site and deploys the Worker and D1 migrations |
 | Tests | Node.js built-in test runner (`node:test`) | Tests scoring, validation, consented storage, dashboard authorization, and AI input boundaries |
 
@@ -54,7 +54,7 @@ Respondent's browser
   └── HTTPS POST /api/assessment
         └── Cloudflare Worker
               ├── assessment.js: validation, scoring, rules, summaries
-              ├── optional Workers AI: aggregate core-scale facts only
+              ├── optional Gemini API: aggregate core-scale facts only
               └── optional D1 INSERT: only after explicit storage consent
   └── Account gate: register, sign in, reset password
         └── Cloudflare Worker → D1; Resend is used only for password resets
@@ -146,8 +146,8 @@ clinical conclusions are drawn.
   needed. The dashboard's delete-all action permanently removes all submission
   rows.
 - **AI consent:** checked separately. If selected, only aggregate Mood, Anxiety,
-  and Stress facts go to Workers AI; this request is not sent if the safety rule
-  is triggered. Review Cloudflare's current service/data terms before collecting
+  and Stress facts go to Google's Gemini API; this request is not sent if the safety rule
+  is triggered. Review Google's current API data-use terms before collecting
   real responses; the application cannot promise the provider retains no
   request metadata.
 - **Hosting operations:** GitHub, Cloudflare, Resend, browsers, and network
@@ -178,7 +178,7 @@ a substitute for legal or research-ethics review.
 ├── admin.html                       # Operator dashboard sign-in and layout
 ├── admin.js                         # Dashboard, exports, and deletion UI
 ├── api-config.js                    # Local API base URL; deployment generates it
-├── wrangler.toml                    # Worker, Workers AI, and D1 bindings
+├── wrangler.toml                    # Worker and D1 configuration
 ├── migrations/
 │   ├── 0001_create_submissions.sql   # Initial D1 table and index
 │   ├── 0002_add_research_consent.sql # Consent record column
@@ -237,7 +237,7 @@ npm test
 ```
 
 The local Node server calculates scores, but it does not connect to the
-production D1 database or Cloudflare Workers AI. A local request attempting to
+production D1 database or Gemini API. A local request attempting to
 save a response receives an explicit error rather than silently pretending it
 was stored. The static `api-config.js` currently points account requests at the
 configured Worker API, so local account registration and email actions use that
@@ -265,6 +265,7 @@ Required configuration (never put secret values in Git or chat):
 | GitHub Actions variable | `CLOUDFLARE_D1_DATABASE_ID` | Selects the D1 database |
 | Cloudflare Worker secret | `ADMIN_PASSWORD` | Dashboard password; unique and at least 20 characters |
 | Cloudflare Worker secret | `RESEND_API_KEY` | Resend API key used for password-recovery email |
+| Optional Cloudflare Worker secret | `GEMINI_API_KEY` | Google Gemini API key for the optional AI reflection |
 | Cloudflare Worker variable | `EMAIL_FROM` | Sender verified with Resend, e.g. `Mindful Check-in <noreply@your-domain.example>` |
 | Cloudflare Worker variable | `SITE_URL` | HTTPS base URL for links in account emails; set in `wrangler.toml` |
 | Optional GitHub Actions variable | `API_BASE_URL` | Overrides the default Worker URL when deploying elsewhere |
@@ -276,6 +277,22 @@ Worker variable, and set the `RESEND_API_KEY` Worker secret (for example, with
 requests return an explicit configuration error. Never put the Resend key in
 Git, `wrangler.toml`, or the static website.
 
+To enable the optional Gemini reflection, create a Gemini API key in Google AI
+Studio and add it to the Cloudflare Worker as the `GEMINI_API_KEY` secret (for
+example, with `npx wrangler secret put GEMINI_API_KEY`). Never put this key in
+Git, `wrangler.toml`, or frontend files. The reflection is opt-in and sends
+Google only aggregate Mood, Anxiety, and Stress totals/counts; it skips Gemini
+when the safety rule is triggered. Use a Google Cloud project with an active
+billing account before sending participant data: Google says unpaid Gemini API
+services may use submitted content to improve products and advises against
+sending sensitive, confidential, or personal information to those services.
+Paid-service prompts and responses are not used for product improvement, but
+may be retained for a limited period for safety and policy enforcement. Review
+[Google's current Gemini API terms](https://ai.google.dev/gemini-api/terms) and
+get appropriate ethics/privacy approval before enabling this for participant
+data. The application cannot verify that the configured key is on a paid
+project.
+
 ## Viva / project presentation notes
 
 ### Short project explanation
@@ -286,7 +303,7 @@ Git, `wrangler.toml`, or the static website.
 > provisional scores. With explicit consent, responses are stored in
 > Cloudflare D1 and reviewed in a password-protected dashboard. Account
 > participants register an email account and sign in, and a saved response is
-> linked to that email only with separate participant consent. A separate optional Workers AI
+> linked to that email only with separate participant consent. A separate optional Gemini API
 > feature generates a short reflection from aggregate core-scale scores only.
 > This is not a diagnostic tool, and the instrument and cutoffs need validation
 > before clinical or research use.”
@@ -305,7 +322,7 @@ automates deployments.
 
 `server.js` is a small local development server using Node's built-in modules.
 `worker.js` is the production Cloudflare runtime and supports Cloudflare
-bindings such as D1 and Workers AI. Both use `assessment.js` so the core scoring
+bindings such as D1. Both use `assessment.js` so the core scoring
 rules are shared. The local server intentionally cannot claim to persist data
 when D1 is unavailable.
 
@@ -326,7 +343,7 @@ questionnaire, but have not been clinically validated for this new composite.
 **Is this a machine-learning diagnostic model?**
 
 No. The scores and standard summaries are deterministic rules. The optional
-Gemma language model writes a short reflection from aggregate Mood, Anxiety,
+Gemini language model writes a short reflection from aggregate Mood, Anxiety,
 and Stress totals/counts after opt-in. It is not trained or fine-tuned on
 participant data, does not diagnose, and is skipped for a safety trigger.
 

@@ -231,9 +231,23 @@ test("Worker API calculates results for GitHub Pages and rejects unknown origins
   assert.equal(rejected.status, 403);
 });
 
-test("Worker AI summary uses only consented aggregate core-scale facts", async () => {
-  let model;
-  let input;
+test("Gemini summary uses only consented aggregate core-scale facts", async () => {
+  let endpoint;
+  let requestOptions;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    endpoint = url;
+    requestOptions = options;
+    return Response.json({
+      candidates: [
+        {
+          content: {
+            parts: [{ text: "A neutral reflection, not a diagnosis." }],
+          },
+        },
+      ],
+    });
+  };
   const answers = answersWith(1);
   answers[18] = 0;
   const response = await worker.fetch(
@@ -251,36 +265,67 @@ test("Worker AI summary uses only consented aggregate core-scale facts", async (
     }),
     {
       DB: createSessionDatabase(),
-      AI: {
-        async run(selectedModel, parameters) {
-          model = selectedModel;
-          input = parameters;
-          return {
-            choices: [
-              { message: { content: "A neutral reflection, not a diagnosis." } },
-            ],
-          };
-        },
-      },
+      GEMINI_API_KEY: "test-gemini-key",
     },
   );
   const result = await response.json();
+  globalThis.fetch = originalFetch;
   assert.equal(response.status, 200);
   assert.equal(result.aiSummaryStatus, "available");
   assert.equal(result.aiSummary, "A neutral reflection, not a diagnosis.");
-  assert.equal(model, "@cf/google/gemma-4-26b-a4b-it");
-  const promptData = JSON.parse(input.messages[1].content);
+  assert.equal(
+    endpoint,
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+  );
+  assert.equal(requestOptions.method, "POST");
+  assert.equal(requestOptions.headers["x-goog-api-key"], "test-gemini-key");
+  assert.equal(new URL(endpoint).search, "");
+  const input = JSON.parse(requestOptions.body);
+  const promptData = JSON.parse(input.contents[0].parts[0].text);
   assert.deepEqual(
     promptData.sectionSummaries.map(({ section }) => section),
     ["Mood", "Anxiety", "Stress"],
   );
   assert.equal(JSON.stringify(promptData).includes('"18"'), false);
-  assert.equal(input.max_completion_tokens, 256);
-  assert.deepEqual(input.chat_template_kwargs, { enable_thinking: false });
+  assert.equal(input.generationConfig.maxOutputTokens, 128);
 });
 
-test("Worker skips AI when the safety rule is triggered", async () => {
+test("Gemini summary reports missing API configuration without calling a provider", async () => {
   let invoked = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    invoked = true;
+    return Response.json({});
+  };
+  const response = await worker.fetch(
+    new Request("https://api.example.workers.dev/api/assessment", {
+      method: "POST",
+      headers: {
+        Origin: "https://example.github.io",
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-session-token",
+      },
+      body: JSON.stringify({
+        answers: answersWith(0),
+        aiSummary: true,
+      }),
+    }),
+    { DB: createSessionDatabase() },
+  );
+  globalThis.fetch = originalFetch;
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.aiSummaryStatus, "unavailable");
+  assert.equal(invoked, false);
+});
+
+test("Worker skips Gemini when the safety rule is triggered", async () => {
+  let invoked = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    invoked = true;
+    return Response.json({});
+  };
   const answers = answersWith(0);
   answers[18] = 1;
   const response = await worker.fetch(
@@ -295,15 +340,11 @@ test("Worker skips AI when the safety rule is triggered", async () => {
     }),
     {
       DB: createSessionDatabase(),
-      AI: {
-        async run() {
-          invoked = true;
-          return { response: "Summary" };
-        },
-      },
+      GEMINI_API_KEY: "test-gemini-key",
     },
   );
   const result = await response.json();
+  globalThis.fetch = originalFetch;
   assert.equal(result.safetySupport, true);
   assert.equal(result.aiSummaryStatus, "skipped-safety");
   assert.equal(invoked, false);
