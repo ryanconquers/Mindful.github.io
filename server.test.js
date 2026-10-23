@@ -319,6 +319,46 @@ test("Gemini summary reports missing API configuration without calling a provide
   assert.equal(invoked, false);
 });
 
+test("Gemini provider errors return safe diagnostic statuses", async () => {
+  const originalFetch = globalThis.fetch;
+  const expectedStatuses = new Map([
+    [400, "provider-request-error"],
+    [401, "provider-key-error"],
+    [403, "provider-access-error"],
+    [404, "provider-model-error"],
+    [429, "provider-quota-error"],
+    [500, "provider-error"],
+  ]);
+  try {
+    for (const [httpStatus, expectedStatus] of expectedStatuses) {
+      globalThis.fetch = async () => Response.json({}, { status: httpStatus });
+      const response = await worker.fetch(
+        new Request("https://api.example.workers.dev/api/assessment", {
+          method: "POST",
+          headers: {
+            Origin: "https://example.github.io",
+            "Content-Type": "application/json",
+            Authorization: "Bearer test-session-token",
+          },
+          body: JSON.stringify({
+            answers: answersWith(0),
+            aiSummary: true,
+          }),
+        }),
+        {
+          DB: createSessionDatabase(),
+          GEMINI_API_KEY: "test-gemini-key",
+        },
+      );
+      const result = await response.json();
+      assert.equal(response.status, 200);
+      assert.equal(result.aiSummaryStatus, expectedStatus);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker skips Gemini when the safety rule is triggered", async () => {
   let invoked = false;
   const originalFetch = globalThis.fetch;

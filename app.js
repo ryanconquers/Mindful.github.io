@@ -213,7 +213,41 @@ function renderResults(data) {
       "Gemini reflection not configured",
       "The optional Gemini reflection is not configured yet. Your scores and summaries are still available.",
     );
-  } else if (["empty-response", "model-error"].includes(data.aiSummaryStatus)) {
+  } else if (data.aiSummaryStatus === "provider-key-error") {
+    addAlert(
+      "ai-summary-status",
+      "Gemini API key was rejected",
+      "Check that GEMINI_API_KEY is saved as a Cloudflare Worker secret, has no extra spaces, and is an active Gemini API key.",
+    );
+  } else if (data.aiSummaryStatus === "provider-access-error") {
+    addAlert(
+      "ai-summary-status",
+      "Gemini project access is blocked",
+      "Check that the Gemini API is enabled for the key’s Google Cloud project, that billing is active, and that the key’s restrictions allow this API.",
+    );
+  } else if (data.aiSummaryStatus === "provider-quota-error") {
+    addAlert(
+      "ai-summary-status",
+      "Gemini API quota reached",
+      "Check the Gemini API quota and billing status for the Google Cloud project, then try again later.",
+    );
+  } else if (data.aiSummaryStatus === "provider-model-error") {
+    addAlert(
+      "ai-summary-status",
+      "Gemini model is unavailable",
+      "Check that the configured model is available to this Gemini API project.",
+    );
+  } else if (data.aiSummaryStatus === "network-error") {
+    addAlert(
+      "ai-summary-status",
+      "Could not reach Gemini",
+      "The site could not connect to Gemini. Try again later; if the problem continues, the site operator should check Cloudflare Worker outbound requests.",
+    );
+  } else if (
+    ["provider-request-error", "provider-error", "empty-response", "model-error"].includes(
+      data.aiSummaryStatus,
+    )
+  ) {
     addAlert(
       "ai-summary-status",
       "Generated reflection unavailable",

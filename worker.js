@@ -546,8 +546,9 @@ async function addAiSummary(assessment, apiKey) {
       oftenReportedCount: frequentResponses,
     }));
 
+  let response;
   try {
-    const response = await fetch(geminiEndpoint, {
+    response = await fetch(geminiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -578,7 +579,16 @@ async function addAiSummary(assessment, apiKey) {
       }),
     });
     if (!response.ok) {
-      throw new Error(`Gemini API returned HTTP ${response.status}.`);
+      const statusMessages = {
+        400: "provider-request-error",
+        401: "provider-key-error",
+        403: "provider-access-error",
+        404: "provider-model-error",
+        429: "provider-quota-error",
+      };
+      assessment.aiSummaryStatus =
+        statusMessages[response.status] ?? "provider-error";
+      return assessment;
     }
     const result = await response.json();
     const summary = result?.candidates?.[0]?.content?.parts
@@ -596,7 +606,7 @@ async function addAiSummary(assessment, apiKey) {
       "Gemini AI summary request failed",
       error instanceof Error ? error.name : "UnknownError",
     );
-    assessment.aiSummaryStatus = "model-error";
+    assessment.aiSummaryStatus = response ? "provider-error" : "network-error";
   }
   return assessment;
 }
