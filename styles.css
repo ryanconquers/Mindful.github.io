@@ -1062,6 +1062,7 @@ h1 {
 
 .auth-shell {
   max-width: 560px;
+  margin-inline: auto;
 }
 
 .segmented {
