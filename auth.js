@@ -10,6 +10,11 @@ export const sessionLifetimeMs = 8 * 60 * 60 * 1000;
 export const maxFailedLogins = 5;
 export const failureWindowMs = 15 * 60 * 1000;
 
+// A fixed salt is only used to equalize the password-hash work for unknown
+// emails. Keep module initialization free of crypto calls: Workers prohibit
+// generating randomness in global scope.
+export const dummyPasswordSalt = "AAAAAAAAAAAAAAAAAAAAAA==";
+
 function toBase64(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);

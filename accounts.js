@@ -3,6 +3,7 @@
 
 import {
   cleanName,
+  dummyPasswordSalt,
   failureWindowMs,
   hashPassword,
   hashToken,
@@ -17,8 +18,6 @@ import {
   safeEqual,
   sessionLifetimeMs,
 } from "./auth.js";
-
-const dummySalt = randomSalt();
 
 export async function authenticate(request, env) {
   const header = request.headers.get("Authorization") ?? "";
@@ -242,7 +241,7 @@ async function login(body, env, { json, origin }) {
     .bind(email)
     .first();
   // Hash even for unknown emails so response time does not reveal accounts.
-  const attempted = await hashPassword(password, user?.password_salt ?? dummySalt);
+  const attempted = await hashPassword(password, user?.password_salt ?? dummyPasswordSalt);
   if (!user || !safeEqual(attempted, user.password_hash)) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM login_failures WHERE failed_at <= ?").bind(windowStart),
