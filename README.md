@@ -1,6 +1,6 @@
 ## AI advice + doctor review (update)
 
-- When a signed-in **patient** submits the check-in, Workers AI writes personalised self-care advice from the section scores only (no name, email or individual answers go to the model). It is saved with the check-in and shown on the results page and under **My check-ins**. If the safety question is answered, AI advice is skipped and crisis support is shown. If the AI is unavailable, standard rule-based advice is used and labelled as such.
+- When a signed-in **patient** opts in and submits the check-in, the Gemini API writes a short reflection from the Mood, Anxiety, and Stress totals only. No name, email, or individual answers go to the model. If a safety trigger is present, the reflection is skipped.
 - The linked **doctor** sees the advice in each patient's records and marks it **Appropriate** or **Needs changes** (a note is required for changes and is shown to the patient). The patient list shows how many pieces of advice are waiting for review.
 - New files: `advice.js`, `advice.test.js`, `migrations/0008_ai_advice_and_doctor_review.sql`. The API deploy workflow now also redeploys when `accounts.js`, `auth.js` or `advice.js` change.
 
@@ -46,7 +46,7 @@ linked to their email only when they explicitly opt in at submission time.
 | Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, manages participant accounts, optionally invokes AI, writes consented records, and serves protected admin API routes |
 | Database | Cloudflare D1 (SQLite-compatible) | Stores participant account credentials, expiring password-reset tokens and sessions, and individual submissions only after explicit consent |
 | Transactional email | Resend HTTPS API | Sends password-reset links; requires a verified sender domain |
-| Optional generative AI | Cloudflare Workers AI, `@cf/google/gemma-4-26b-a4b-it` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
+| Optional generative AI | Google Gemini API, `gemini-3.5-flash-lite` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
 | Deployment | GitHub Actions, Wrangler | Publishes the static site and deploys the Worker and D1 migrations |
 | Tests | Node.js built-in test runner (`node:test`) | Tests scoring, validation, consented storage, dashboard authorization, and AI input boundaries |
 
@@ -230,9 +230,10 @@ those users must sign in again.
 
 The new account API uses PBKDF2-SHA-256 password hashes, random bearer sessions
 with an eight-hour lifetime, and a 15-minute lockout after five failed sign-in
-attempts. The optional reflection now uses Cloudflare Workers AI through the
-`AI` binding in `wrangler.toml` (`@cf/google/gemma-4-26b-a4b-it`). Review
-Cloudflare's current service terms before enabling it with participant data.
+attempts. The optional reflection uses the Gemini API model
+`gemini-3.5-flash-lite`. Configure the `GEMINI_API_KEY` Worker secret before
+using it and review Google's current service terms before sending participant
+data.
 
 All production API routes are served by the Cloudflare Worker:
 

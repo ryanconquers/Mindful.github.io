@@ -2,7 +2,9 @@ import { authenticate, handleAccounts } from "./accounts.js";
 import { calculateAssessment, validateAnswers } from "./assessment.js";
 
 const maxBodyBytes = 16 * 1024;
-const aiModel = "@cf/google/gemma-4-26b-a4b-it";
+const geminiModel = "gemini-3.5-flash-lite";
+const geminiEndpoint =
+  `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 const allowedOriginPattern =
   /^https:\/\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.github\.io$/i;
 
@@ -187,13 +189,13 @@ async function readJson(request) {
   }
 }
 
-async function addAiSummary(assessment, ai) {
+async function addAiSummary(assessment, apiKey) {
   if (assessment.safetySupport) {
     assessment.aiSummaryStatus = "skipped-safety";
     return assessment;
   }
-  if (!ai || typeof ai.run !== "function") {
-    assessment.aiSummaryStatus = "binding-unavailable";
+  if (typeof apiKey !== "string" || !apiKey.trim()) {
+    assessment.aiSummaryStatus = "unavailable";
     return assessment;
   }
 
@@ -207,27 +209,37 @@ async function addAiSummary(assessment, ai) {
       oftenReportedCount: frequentResponses,
     }));
 
+  let response;
   try {
-    const result = await ai.run(aiModel, {
-      messages: [
-        {
-          role: "system",
-          content:
-            "Write a brief, gentle reflection (at most 60 words) about the aggregate questionnaire data provided. The questionnaire is unvalidated. Do not diagnose, label, infer causes, predict outcomes, or recommend treatment. Do not describe the provisional bands as clinical facts. Use nonjudgmental language and state that this is only a reflection, not a diagnosis. Do not give crisis advice; a separate safety message handles that.",
+    response = await fetch(geminiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{
+            text: "Write a specific, gentle reflection in 2 or 3 sentences and at most 55 words. Use the actual Mood, Anxiety, and Stress section names and the supplied provisional bands and often-reported counts. Describe which section stands out or, if the pattern is similar across sections, say that clearly. Tie each observation to the supplied facts; never invent symptoms, causes, changes over time, or personal circumstances. End with one brief, open reflection question or a low-risk everyday activity relevant to the pattern. Do not diagnose, label, predict outcomes, recommend treatment, present provisional bands as clinical facts, or give crisis advice. The page already displays the non-diagnostic disclaimer, so do not add generic disclaimer or filler text.",
+          }],
         },
-        {
+        contents: [{
           role: "user",
-          content: JSON.stringify({ sectionSummaries: scoreFacts }),
-        },
-      ],
-      max_completion_tokens: 256,
-      temperature: 0.2,
-      chat_template_kwargs: { enable_thinking: false },
+          parts: [{ text: JSON.stringify({ sectionSummaries: scoreFacts }) }],
+        }],
+        generationConfig: { maxOutputTokens: 128, temperature: 0.2 },
+      }),
     });
-    const summary =
-      typeof result === "string"
-        ? result
-        : result?.response ?? result?.choices?.[0]?.message?.content;
+    if (!response.ok) {
+      console.error("Gemini AI summary request failed", response.status);
+      assessment.aiSummaryStatus = "model-error";
+      return assessment;
+    }
+    const result = await response.json();
+    const summary = result?.candidates?.[0]?.content?.parts
+      ?.map(({ text }) => text)
+      .filter((text) => typeof text === "string")
+      .join("");
     if (typeof summary !== "string" || !summary.trim()) {
       assessment.aiSummaryStatus = "empty-response";
       return assessment;
@@ -236,7 +248,7 @@ async function addAiSummary(assessment, ai) {
     assessment.aiSummaryStatus = "available";
   } catch (error) {
     console.error(
-      "Workers AI summary request failed",
+      "Gemini AI summary request failed",
       error instanceof Error ? error.name : "UnknownError",
     );
     assessment.aiSummaryStatus = "model-error";
@@ -421,7 +433,7 @@ export default {
         assessment.saved = false;
       }
       if (body.aiSummary === true) {
-        await addAiSummary(assessment, env?.AI);
+        await addAiSummary(assessment, env?.GEMINI_API_KEY);
       }
       return jsonResponse(assessment, 200, origin);
     } catch (error) {
