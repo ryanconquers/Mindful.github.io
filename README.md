@@ -1,3 +1,11 @@
+## AI advice + doctor review (update)
+
+- When a signed-in **patient** submits the check-in, Workers AI writes personalised self-care advice from the section scores only (no name, email or individual answers go to the model). It is saved with the check-in and shown on the results page and under **My check-ins**. If the safety question is answered, AI advice is skipped and crisis support is shown. If the AI is unavailable, standard rule-based advice is used and labelled as such.
+- The linked **doctor** sees the advice in each patient's records and marks it **Appropriate** or **Needs changes** (a note is required for changes and is shown to the patient). The patient list shows how many pieces of advice are waiting for review.
+- New files: `advice.js`, `advice.test.js`, `migrations/0008_ai_advice_and_doctor_review.sql`. The API deploy workflow now also redeploys when `accounts.js`, `auth.js` or `advice.js` change.
+
+---
+
 # Mindful Check-in
 
 Mindful Check-in is a responsive website for a 25-item questionnaire about
