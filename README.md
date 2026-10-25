@@ -203,7 +203,9 @@ a substitute for legal or research-ethics review.
 │   ├── 0003_create_participant_accounts.sql # Accounts, tokens, sessions, linkage
 │   ├── 0004_disable_email_verification.sql # Activate existing accounts
 │   ├── 0005_remove_account_smoke_test.sql # Remove first temporary test account
-│   └── 0006_remove_account_smoke_test.sql # Remove final temporary test account
+│   ├── 0006_remove_account_smoke_test.sql # Remove final temporary test account
+│   ├── 0007_patient_doctor_accounts.sql # Patient/doctor accounts and check-in linkage
+│   └── 0008_advice_reviews.sql          # Advice and doctor review metadata
 ├── .github/workflows/
 │   ├── deploy-site.yml               # GitHub Pages build/deployment
 │   └── deploy-api.yml                # Worker deployment and D1 migrations
