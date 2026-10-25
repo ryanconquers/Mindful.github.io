@@ -350,7 +350,7 @@ function renderAccounts(accounts) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 3;
-    cell.textContent = "No participant accounts yet.";
+    cell.textContent = "Patient account identities are hidden in this research dashboard.";
     row.append(cell);
     accountRows.append(row);
     return;

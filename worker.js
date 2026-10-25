@@ -88,7 +88,8 @@ async function handleAdmin(request, env, url, origin) {
         SUM(CASE WHEN experiences_band IN ('Moderate', 'High') THEN 1 ELSE 0 END) AS experiences_moderate_high,
         SUM(CASE WHEN personality_band IN ('Moderate', 'High') THEN 1 ELSE 0 END) AS personality_moderate_high,
         SUM(CASE WHEN safety_support = 1 THEN 1 ELSE 0 END) AS safety_support_count,
-        SUM(CASE WHEN functioning_score >= 2 THEN 1 ELSE 0 END) AS functioning_support_count
+        SUM(CASE WHEN functioning_score >= 2 THEN 1 ELSE 0 END) AS functioning_support_count,
+        (SELECT COUNT(*) FROM users WHERE role = 'patient') AS account_count
       FROM submissions
     `).first();
     const bands = await env.DB.prepare(`
@@ -116,6 +117,11 @@ async function handleAdmin(request, env, url, origin) {
       200,
       origin,
     );
+  }
+
+  // Keep the existing dashboard API contract without exposing patient identity.
+  if (url.pathname === "/api/admin/accounts" && request.method === "GET") {
+    return jsonResponse({ accounts: [] }, 200, origin);
   }
 
   if (url.pathname === "/api/admin/submissions" && request.method === "GET") {
