@@ -38,7 +38,7 @@ linked to their email only when they explicitly opt in at submission time.
 | Production API | Cloudflare Workers, JavaScript ES modules | Validates requests, computes scores, applies safety rules, manages participant accounts, optionally invokes AI, writes consented records, and serves protected admin API routes |
 | Database | Cloudflare D1 (SQLite-compatible) | Stores participant account credentials, expiring password-reset tokens and sessions, and individual submissions only after explicit consent |
 | Transactional email | Resend HTTPS API | Sends password-reset links; requires a verified sender domain |
-| Optional generative AI | Google Gemini API, `gemini-3.5-flash-lite` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
+| Optional generative AI | Cloudflare Workers AI, `@cf/google/gemma-4-26b-a4b-it` | Writes a short reflection from aggregate Mood, Anxiety, and Stress scores/counts only |
 | Deployment | GitHub Actions, Wrangler | Publishes the static site and deploys the Worker and D1 migrations |
 | Tests | Node.js built-in test runner (`node:test`) | Tests scoring, validation, consented storage, dashboard authorization, and AI input boundaries |
 
@@ -204,6 +204,26 @@ a substitute for legal or research-ethics review.
 
 ## API overview
 
+## Patient and doctor account update
+
+The account flow now supports patient and doctor roles. Patients register with
+their name, email, and password, confirm they are at least 18, and agree that
+check-ins are saved to their account. They can review past check-ins, link or
+unlink a doctor, and delete their account and records from `records.html`.
+Doctors register with an operator-issued access code and receive a personal
+doctor code to share with patients. A doctor can see only patients linked to
+that doctor's code. Configure the Worker secret `DOCTOR_INVITE_CODE` (at least
+12 characters) before enabling doctor registration. Migration
+`0007_patient_doctor_accounts.sql` preserves verified participant accounts as
+patients and links their previously saved records; prior sessions expire and
+those users must sign in again.
+
+The new account API uses PBKDF2-SHA-256 password hashes, random bearer sessions
+with an eight-hour lifetime, and a 15-minute lockout after five failed sign-in
+attempts. The optional reflection now uses Cloudflare Workers AI through the
+`AI` binding in `wrangler.toml` (`@cf/google/gemma-4-26b-a4b-it`). Review
+Cloudflare's current service terms before enabling it with participant data.
+
 All production API routes are served by the Cloudflare Worker:
 
 | Method and path | Purpose | Access |
@@ -275,7 +295,7 @@ Required configuration (never put secret values in Git or chat):
 | GitHub Actions variable | `CLOUDFLARE_D1_DATABASE_ID` | Selects the D1 database |
 | Cloudflare Worker secret | `ADMIN_PASSWORD` | Dashboard password; unique and at least 20 characters |
 | Cloudflare Worker secret | `RESEND_API_KEY` | Resend API key used for password-recovery email |
-| Optional Cloudflare Worker secret | `GEMINI_API_KEY` | Google Gemini API key for the optional AI reflection |
+| Cloudflare Worker secret | `DOCTOR_INVITE_CODE` | At least 12 characters; controls doctor account registration |
 | Cloudflare Worker variable | `EMAIL_FROM` | Sender verified with Resend, e.g. `Mindful Check-in <noreply@your-domain.example>` |
 | Cloudflare Worker variable | `SITE_URL` | HTTPS base URL for links in account emails; set in `wrangler.toml` |
 | Optional GitHub Actions variable | `API_BASE_URL` | Overrides the default Worker URL when deploying elsewhere |

@@ -78,8 +78,21 @@ const answeredCount = document.querySelector("#answered-count");
 const progressFill = document.querySelector("#progress-fill");
 const errorMessage = document.querySelector("#form-error");
 const results = document.querySelector("#results");
-const storageConsentInput = document.querySelector("#storage-consent");
-const accountLinkConsentInput = document.querySelector("#account-link-consent");
+const auth = window.MindfulAuth;
+const session = auth.getSession();
+const checkInShell = document.querySelector("#check-in-shell");
+
+// The check-in is for signed-in patients; everyone else sees a sign-in prompt.
+if (session?.user.role === "patient") {
+  checkInShell.hidden = false;
+  document.querySelector("#save-note").textContent = session.user.doctor
+    ? `Signed in as ${session.user.name}. This check-in will be saved to your account and shared with ${session.user.doctor.name}.`
+    : `Signed in as ${session.user.name}. This check-in will be saved to your account. Only you can see it until you link a doctor.`;
+} else if (session) {
+  document.querySelector("#doctor-gate").hidden = false;
+} else {
+  document.querySelector("#auth-gate").hidden = false;
+}
 let questionNumber = 1;
 
 for (const group of groups) {
@@ -134,14 +147,6 @@ function updateProgress() {
   progressFill.style.width = `${(answered / 25) * 100}%`;
 }
 
-function updateAccountLinkConsent() {
-  accountLinkConsentInput.disabled = !storageConsentInput.checked;
-  if (!storageConsentInput.checked) accountLinkConsentInput.checked = false;
-}
-
-storageConsentInput.addEventListener("change", updateAccountLinkConsent);
-updateAccountLinkConsent();
-
 form.addEventListener("change", updateProgress);
 
 function addAlert(className, title, content) {
@@ -153,30 +158,6 @@ function addAlert(className, title, content) {
   paragraph.textContent = content;
   alert.append(heading, paragraph);
   results.append(alert);
-}
-
-function geminiFailureMessage(status) {
-  const messages = {
-    unavailable:
-      "The Gemini API key is not available to the Worker. Check that the Cloudflare secret is named GEMINI_API_KEY and is set for this Worker.",
-    "provider-key-error":
-      "Google rejected the API key. Check that GEMINI_API_KEY is an active Gemini API key with no extra spaces.",
-    "provider-access-error":
-      "Google blocked this project or key. Check that the Gemini API is enabled and that API-key restrictions allow it.",
-    "provider-quota-error":
-      "The Gemini project’s quota or billing limit was reached. Check its quota and billing status.",
-    "provider-model-error":
-      "Google reports that the configured Gemini model is unavailable to this project.",
-    "provider-request-error":
-      "Google rejected the Gemini request. The site operator should check the Worker request configuration.",
-    "provider-error":
-      "Google’s Gemini service returned an error. Try again later.",
-    "network-error":
-      "The Worker could not connect to Gemini. Try again later or check Worker outbound connectivity.",
-    "empty-response":
-      "Gemini responded but returned no reflection. Try again later.",
-  };
-  return messages[status] ?? "Gemini could not generate the demo reflection.";
 }
 
 function renderResults(data) {
@@ -195,14 +176,6 @@ function renderResults(data) {
   headingGroup.append(eyebrow, heading, intro);
   topLine.append(headingGroup);
   results.append(topLine);
-
-  if (!data.saved) {
-    addAlert(
-      "storage-status",
-      "This response was not saved to the admin dashboard",
-      "To share a response with the project team, select “Optional: save my answers for academic analysis” before submitting. Your results are still shown here.",
-    );
-  }
 
   if (data.safetySupport) {
     addAlert(
@@ -239,44 +212,8 @@ function renderResults(data) {
     aiDisclaimer.textContent =
       "Generated from combined Mood, Anxiety, and Stress totals and counts only. It may be inaccurate and is not a diagnosis or professional advice.";
     results.append(aiDisclaimer);
-  } else if (data.aiSummaryStatus === "unavailable") {
-    addAlert(
-      "ai-summary-status",
-      "Gemini reflection not configured",
-      "The optional Gemini reflection is not configured yet. Your scores and summaries are still available.",
-    );
-  } else if (data.aiSummaryStatus === "provider-key-error") {
-    addAlert(
-      "ai-summary-status",
-      "Gemini API key was rejected",
-      "Check that GEMINI_API_KEY is saved as a Cloudflare Worker secret, has no extra spaces, and is an active Gemini API key.",
-    );
-  } else if (data.aiSummaryStatus === "provider-access-error") {
-    addAlert(
-      "ai-summary-status",
-      "Gemini project access is blocked",
-      "Check that the Gemini API is enabled for the key’s Google Cloud project, that billing is active, and that the key’s restrictions allow this API.",
-    );
-  } else if (data.aiSummaryStatus === "provider-quota-error") {
-    addAlert(
-      "ai-summary-status",
-      "Gemini API quota reached",
-      "Check the Gemini API quota and billing status for the Google Cloud project, then try again later.",
-    );
-  } else if (data.aiSummaryStatus === "provider-model-error") {
-    addAlert(
-      "ai-summary-status",
-      "Gemini model is unavailable",
-      "Check that the configured model is available to this Gemini API project.",
-    );
-  } else if (data.aiSummaryStatus === "network-error") {
-    addAlert(
-      "ai-summary-status",
-      "Could not reach Gemini",
-      "The site could not connect to Gemini. Try again later; if the problem continues, the site operator should check Cloudflare Worker outbound requests.",
-    );
   } else if (
-    ["provider-request-error", "provider-error", "empty-response", "model-error"].includes(
+    ["unavailable", "binding-unavailable", "empty-response", "model-error"].includes(
       data.aiSummaryStatus,
     )
   ) {
@@ -291,58 +228,6 @@ function renderResults(data) {
       "Generated reflection not used",
       "To prioritize your safety, the optional generated reflection was not created. The supportive safety information above is based on your response.",
     );
-    const demoButton = document.createElement("button");
-    demoButton.type = "button";
-    demoButton.className = "button button-secondary";
-    demoButton.textContent = "Show Gemini demo with sample data";
-    demoButton.setAttribute(
-      "aria-describedby",
-      "gemini-demo-note",
-    );
-    const demoNote = document.createElement("p");
-    demoNote.id = "gemini-demo-note";
-    demoNote.className = "ai-disclaimer";
-    demoNote.textContent =
-      "The demo uses fixed sample data only and is not based on your responses.";
-    demoButton.addEventListener("click", async () => {
-      demoButton.disabled = true;
-      demoButton.textContent = "Contacting Gemini…";
-      try {
-        const apiBase = (window.MIND_CHECKIN_API_BASE || "").replace(/\/+$/, "");
-        const headers = {
-          Authorization: `Bearer ${window.MindfulAccount?.token ?? ""}`,
-        };
-        const response = await fetch(`${apiBase}/api/ai-demo`, {
-          method: "POST",
-          headers,
-        });
-        const demo = await response.json();
-        if (!response.ok) {
-          throw new Error(demo.error || "The Gemini demo could not be completed.");
-        }
-        if (demo.aiSummaryStatus === "available" && demo.aiSummary) {
-          addAlert(
-            "ai-summary",
-            "Gemini connection demo (synthetic sample data)",
-            demo.aiSummary,
-          );
-          const disclaimer = document.createElement("p");
-          disclaimer.className = "ai-disclaimer";
-          disclaimer.textContent =
-            "This demo reflection was generated from fixed sample data, not your answers. It is not a diagnosis or professional advice.";
-          results.insertBefore(disclaimer, demoButton);
-          demoButton.remove();
-          demoNote.remove();
-        } else {
-          throw new Error(geminiFailureMessage(demo.aiSummaryStatus));
-        }
-      } catch (error) {
-        demoNote.textContent = error.message;
-        demoButton.disabled = false;
-        demoButton.textContent = "Try Gemini demo again";
-      }
-    });
-    results.append(demoButton, demoNote);
   }
 
   const scoreList = document.createElement("div");
@@ -398,9 +283,7 @@ function renderResults(data) {
   resetRow.className = "submit-row";
   const resetNote = document.createElement("p");
   resetNote.textContent = data.saved
-    ? data.accountLinked
-      ? "Your response was saved with your research-storage and account-link consent."
-      : "Your response was saved with your research-storage consent."
+    ? "This check-in was saved to your account."
     : "Your responses were used to calculate these results and were not saved.";
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -408,13 +291,19 @@ function renderResults(data) {
   resetButton.textContent = "Start again";
   resetButton.addEventListener("click", () => {
     form.reset();
-    updateAccountLinkConsent();
     updateProgress();
     results.hidden = true;
     form.closest(".form-shell").hidden = false;
     document.querySelector(".form-shell").scrollIntoView({ behavior: "smooth" });
   });
-  resetRow.append(resetNote, resetButton);
+  const historyLink = document.createElement("a");
+  historyLink.className = "button button-secondary button-link";
+  historyLink.href = "./records.html";
+  historyLink.textContent = "View my check-ins";
+  const resetActions = document.createElement("div");
+  resetActions.className = "admin-actions";
+  resetActions.append(historyLink, resetButton);
+  resetRow.append(resetNote, resetActions);
   const guidance = document.createElement("section");
   guidance.className = "guidance-card";
   const guidanceHeading = document.createElement("h3");
@@ -449,37 +338,24 @@ form.addEventListener("submit", async (event) => {
 
   const submitButton = form.querySelector('button[type="submit"]');
   const aiSummaryRequested = document.querySelector("#ai-summary-consent").checked;
-  const storageConsent = storageConsentInput.checked;
-  const linkAccountConsent = accountLinkConsentInput.checked;
   submitButton.disabled = true;
   submitButton.textContent = "Calculating…";
   try {
     const apiBase = (window.MIND_CHECKIN_API_BASE || "").replace(/\/+$/, "");
-    const headers = { "Content-Type": "application/json" };
-    const accountToken = window.MindfulAccount?.token;
-    if (accountToken) {
-      headers.Authorization = `Bearer ${accountToken}`;
-    }
     const response = await fetch(`${apiBase}/api/assessment`, {
       method: "POST",
-      headers,
-      body: JSON.stringify({
-        answers,
-        aiSummary: aiSummaryRequested,
-        consentToStore: storageConsent,
-        linkAccount:
-          storageConsent &&
-          linkAccountConsent &&
-          Boolean(accountToken) &&
-          window.MindfulAccount?.isSignedIn === true,
-        researchConsent: storageConsent
-          ? linkAccountConsent
-            ? "18+ research storage consent and explicit account-link consent v4"
-            : "18+ research storage consent; account email not linked v4"
-          : undefined,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`,
+      },
+      body: JSON.stringify({ answers, aiSummary: aiSummaryRequested }),
     });
     const data = await response.json();
+    if (response.status === 401) {
+      auth.clearSession();
+      window.location.href = "./login.html";
+      return;
+    }
     if (!response.ok) throw new Error(data.error || "Your check-in could not be calculated.");
     renderResults(data);
   } catch (error) {

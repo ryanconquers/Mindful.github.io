@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <title>My check-ins | Mindful Check-in</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./api-config.js"></script>
+    <script src="./auth-client.js" defer></script>
+    <script src="./records.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Mindful Check-in home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>mindful<span class="brand-light"> check-in</span></span>
+      </a>
+      <nav id="account-nav" class="account-nav" aria-label="Account"></nav>
+    </header>
+
+    <main class="admin-main">
+      <section class="intro admin-intro">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> YOUR ACCOUNT</p>
+        <h1>My check-ins</h1>
+        <p class="intro-copy">
+          Every check-in you complete while signed in is saved here. Only you
+          and the doctor linked to your account can see them.
+        </p>
+      </section>
+
+      <section class="form-shell" aria-labelledby="doctor-title">
+        <h2 id="doctor-title" class="panel-title">My doctor</h2>
+        <p id="doctor-status" class="admin-note"></p>
+        <form id="doctor-form" class="inline-form" novalidate>
+          <div class="field">
+            <label for="doctor-code">Doctor code</label>
+            <input id="doctor-code" class="field-input" type="text" autocomplete="off" maxlength="12" placeholder="ABCD-EFGH" />
+          </div>
+          <button class="button button-primary" type="submit">Link doctor</button>
+          <button id="doctor-unlink" class="button button-secondary" type="button" hidden>Remove doctor</button>
+        </form>
+        <p id="doctor-error" class="error-message" role="alert" hidden></p>
+      </section>
+
+      <section class="form-shell" aria-labelledby="history-title">
+        <div class="admin-heading-row">
+          <div>
+            <h2 id="history-title" class="panel-title">Saved check-ins</h2>
+            <p class="admin-note">Newest first. Open one to see your answers.</p>
+          </div>
+          <a class="button button-primary button-link" href="./index.html">Take a new check-in</a>
+        </div>
+        <div id="history" class="admin-records"></div>
+      </section>
+
+      <section class="form-shell" aria-labelledby="delete-title">
+        <h2 id="delete-title" class="panel-title">Delete my account</h2>
+        <p class="admin-note">
+          This permanently deletes your account and every saved check-in. Your
+          doctor will no longer be able to see them.
+        </p>
+        <button id="delete-account" class="button button-danger" type="button">Delete my account</button>
+        <p id="delete-error" class="error-message" role="alert" hidden></p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Check-ins are a reflection tool, not a diagnosis.</p>
+      <p><a href="./">Back to the check-in</a></p>
+    </footer>
+  </body>
+</html>

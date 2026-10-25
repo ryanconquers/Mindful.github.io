@@ -11,6 +11,7 @@
     <title>Mindful Check-in | Mental and Emotional Well-being</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./api-config.js"></script>
+    <script src="./auth-client.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -19,92 +20,10 @@
         <span class="brand-mark" aria-hidden="true">m</span>
         <span>mindful<span class="brand-light"> check-in</span></span>
       </a>
-      <span class="header-note">A moment for your wellbeing</span>
+      <nav id="account-nav" class="account-nav" aria-label="Account"></nav>
     </header>
 
     <main>
-      <section id="account-gate" class="account-shell account-gate" aria-labelledby="account-title">
-        <p class="eyebrow">PARTICIPANT SIGN IN</p>
-        <h1 id="account-title">Welcome back</h1>
-        <p class="account-copy">
-          Sign in to continue to your Mindful Check-in.
-        </p>
-        <div id="account-login-view" class="account-view">
-          <form id="account-login" class="account-form">
-            <label for="login-email">Email address</label>
-            <input id="login-email" name="email" type="email" autocomplete="email" maxlength="254" required />
-            <label for="login-password">Password</label>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required />
-            <button class="button button-primary" type="submit">Sign in</button>
-          </form>
-          <button id="show-forgot" class="account-text-button" type="button">
-            Forgot password?
-          </button>
-          <p class="account-switch">
-            New here?
-            <button id="show-register" class="account-text-button" type="button">
-              Register
-            </button>
-          </p>
-        </div>
-
-        <div id="account-register-view" class="account-view" hidden>
-          <form id="account-register" class="account-form">
-            <label for="register-email">Email address</label>
-            <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required />
-            <label for="register-password">Create password</label>
-            <input
-              id="register-password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              minlength="12"
-              maxlength="128"
-              aria-describedby="password-hint"
-              required
-            />
-            <p id="password-hint" class="account-note">Use at least 12 characters.</p>
-            <button class="button button-primary" type="submit">Register</button>
-          </form>
-          <p class="account-switch">
-            Already registered?
-            <button id="show-login" class="account-text-button" type="button">
-              Sign in
-            </button>
-          </p>
-        </div>
-
-        <div id="account-forgot-view" class="account-view" hidden>
-          <p class="account-copy">We’ll email a secure reset link if an account matches. Password recovery requires the site email service.</p>
-          <form id="account-forgot" class="account-form">
-            <label for="forgot-email">Email address</label>
-            <input id="forgot-email" name="email" type="email" autocomplete="email" maxlength="254" required />
-            <button class="button button-primary" type="submit">Send reset link</button>
-          </form>
-          <button class="account-text-button" type="button" data-show-login>
-            Return to sign in
-          </button>
-        </div>
-
-        <div id="account-reset-view" class="account-view" hidden>
-          <form id="account-reset" class="account-form">
-            <label for="reset-password">New password</label>
-            <input
-              id="reset-password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              minlength="12"
-              maxlength="128"
-              required
-            />
-            <button class="button button-primary" type="submit">Update password</button>
-          </form>
-        </div>
-        <p id="account-message" class="account-message" role="status" aria-live="polite" hidden></p>
-      </section>
-
-      <div id="questionnaire-content" hidden>
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow"><span class="eyebrow-dot"></span> YOUR WELLBEING, IN FOCUS</p>
         <h1 id="page-title">A check-in on your mental and emotional well-being.</h1>
@@ -123,24 +42,45 @@
         <span class="notice-icon" aria-hidden="true">i</span>
         <p>
           <strong>Before you begin: privacy and important information</strong>
-          Your account email is used for sign-in and account recovery and is visible to
-          the project team in the password-protected dashboard. Cloudflare
-          processes your answers to calculate results. Only responses you
-          explicitly consent to save are visible there; you can separately agree
-          to link a saved response to your email. Saved responses are kept until
-          deleted. This questionnaire is not a diagnosis, and its wording and
-          scoring have not been clinically validated.
+          You take the check-in while signed in to a free patient account (your
+          name and email). Cloudflare processes your answers to calculate
+          results, and each completed check-in is saved to your account. It is
+          visible only to you and to the doctor you link to your account, and
+          is never shown publicly or to other participants. The project team
+          may view saved answers without your name or email in a
+          password-protected dashboard for academic analysis. You can unlink
+          your doctor or delete your account and records at any time.
+          Cloudflare provides the website, database, and optional AI service.
+          This questionnaire is not a diagnosis, and its wording and scoring
+          have not been clinically validated.
         </p>
       </section>
 
-      <section id="account-session" class="account-shell account-session" aria-label="Signed-in account">
-        <span id="account-email"></span>
-        <button id="account-logout" class="button button-secondary" type="button">
-          Sign out
-        </button>
+      <section id="auth-gate" class="results-shell auth-gate" aria-labelledby="gate-title" hidden>
+        <p class="eyebrow">SIGN IN TO BEGIN</p>
+        <h2 id="gate-title">Create a patient account to take the check-in</h2>
+        <p id="gate-copy" class="admin-note">
+          Register with your email so your results are saved to your account
+          and, if you choose, shared with your doctor. Already registered?
+          Sign in to continue.
+        </p>
+        <div class="auth-gate-actions">
+          <a class="button button-primary button-link" href="./login.html?mode=register">Register as a patient</a>
+          <a class="button button-secondary button-link" href="./login.html">Sign in</a>
+        </div>
+        <p class="admin-note">Are you a doctor? <a href="./login.html?mode=register&amp;role=doctor">Create a doctor account</a> or <a href="./login.html">sign in</a>.</p>
       </section>
 
-      <section class="form-shell" aria-labelledby="form-title">
+      <section id="doctor-gate" class="results-shell auth-gate" hidden>
+        <p class="eyebrow">DOCTOR ACCOUNT</p>
+        <h2>You’re signed in as a doctor</h2>
+        <p class="admin-note">The check-in is for patients. Use your dashboard to review the patients linked to you.</p>
+        <div class="auth-gate-actions">
+          <a class="button button-primary button-link" href="./doctor.html">Open my patients</a>
+        </div>
+      </section>
+
+      <section id="check-in-shell" class="form-shell" aria-labelledby="form-title" hidden>
         <div class="form-heading">
           <div>
             <p class="eyebrow">YOUR CHECK-IN</p>
@@ -182,55 +122,28 @@
         </section>
         <p class="scale-key">
           Questions 1–21 refer to the last 2 weeks; questions 22–24 refer to
-          the past few months. You can leave either consent option unchecked
-          and still receive your results.
+          the past few months. The optional AI reflection can be left
+          unchecked and you will still receive your results.
         </p>
 
         <form id="assessment-form">
-          <fieldset class="storage-consent">
-            <label class="storage-consent-label" for="storage-consent">
-              <input id="storage-consent" name="storageConsent" type="checkbox" />
-              <span>
-                <strong>Optional: save my answers for academic analysis</strong>
-                <span id="storage-consent-description">
-                  Check this to confirm I am 18 or older and agree to save my answers and scores
-                  for academic analysis. The project team can view saved responses in its
-                  password-protected dashboard, where they are kept until deleted.
-                  Leave unchecked and my response will not be saved or appear on the dashboard;
-                  I can still get my results.
-                </span>
-              </span>
-            </label>
-          </fieldset>
-          <fieldset class="storage-consent account-link-consent">
-            <label class="storage-consent-label" for="account-link-consent">
-              <input id="account-link-consent" name="accountLinkConsent" type="checkbox" disabled />
-              <span>
-                <strong>Optional: link this saved response to my account</strong>
-                This separately allows the project team to see your account email
-                beside this response in the dashboard. First choose to save the
-                response above. Leave this unchecked to save it without your email.
-              </span>
-            </label>
-          </fieldset>
+          <p id="save-note" class="account-save-note"></p>
           <fieldset class="ai-consent">
             <label class="ai-consent-label" for="ai-summary-consent">
               <input id="ai-summary-consent" name="aiSummary" type="checkbox" />
               <span>
                 <strong>Optional: add an AI-generated reflection</strong>
-                If you choose this, Google's Gemini API receives only
+                If you choose this, Cloudflare's AI service receives only
                 combined totals and counts for Mood, Anxiety, and Stress—not
-                your individual answers or identity details. The site operator
-                must use a Gemini project with active billing for this feature;
-                do not send participant data using unpaid Gemini quota. The
-                reflection may be inaccurate and is not professional advice.
-                Leave this unchecked to skip it.
+                your individual answers or identity details. The reflection
+                may be inaccurate and is not professional advice. Leave this
+                unchecked to skip it.
               </span>
             </label>
           </fieldset>
           <div id="question-groups"></div>
           <div class="submit-row">
-            <p>Saving and the AI reflection are optional. Your answers are used to calculate your results.</p>
+            <p>Your check-in is saved to your account. The AI reflection is optional.</p>
             <button class="button button-primary" type="submit">
               See my check-in <span aria-hidden="true">→</span>
             </button>
@@ -240,7 +153,6 @@
       </section>
 
       <section id="results" class="results-shell" aria-live="polite" hidden></section>
-      </div>
     </main>
 
     <footer class="site-footer">
@@ -249,6 +161,5 @@
       <p>Not a substitute for professional care.</p>
       <p><a href="./admin.html">Administrator dashboard</a></p>
     </footer>
-    <script src="./account.js" defer></script>
   </body>
 </html>

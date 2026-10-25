@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <title>Doctor dashboard | Mindful Check-in</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./api-config.js"></script>
+    <script src="./auth-client.js" defer></script>
+    <script src="./doctor.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Mindful Check-in home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>mindful<span class="brand-light"> check-in</span></span>
+      </a>
+      <nav id="account-nav" class="account-nav" aria-label="Account"></nav>
+    </header>
+
+    <main class="admin-main">
+      <section class="intro admin-intro">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> DOCTOR AREA</p>
+        <h1>My patients</h1>
+        <p class="intro-copy">
+          You can see check-ins from patients who registered with, or linked
+          to, your doctor code. Scores are provisional and unvalidated; they
+          are a conversation starter, not a diagnosis.
+        </p>
+      </section>
+
+      <section class="form-shell code-card" aria-labelledby="code-title">
+        <h2 id="code-title" class="panel-title">Your doctor code</h2>
+        <p class="admin-note">Give this code to your patients. They enter it when they register (or later under “My check-ins”).</p>
+        <p id="doctor-code" class="doctor-code" aria-live="polite">—</p>
+      </section>
+
+      <section class="form-shell" aria-labelledby="patients-title">
+        <div class="admin-heading-row">
+          <h2 id="patients-title" class="panel-title">Linked patients</h2>
+          <button id="refresh" class="button button-secondary" type="button">Refresh</button>
+        </div>
+        <p id="patients-empty" class="admin-note" hidden>
+          No patients are linked yet. Share your doctor code above.
+        </p>
+        <div class="admin-table-wrap">
+          <table class="admin-band-table patient-table" id="patients-table" hidden>
+            <thead>
+              <tr>
+                <th>Patient</th><th>Check-ins</th><th>Latest</th><th>Mood</th><th>Anxiety</th><th>Stress</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="patients-body"></tbody>
+          </table>
+        </div>
+        <p id="patients-error" class="error-message" role="alert" hidden></p>
+      </section>
+
+      <section id="patient-detail" class="form-shell" hidden aria-labelledby="detail-title">
+        <div class="admin-heading-row">
+          <div>
+            <h2 id="detail-title" class="panel-title"></h2>
+            <p id="detail-email" class="admin-note"></p>
+          </div>
+          <button id="detail-close" class="button button-secondary" type="button">Close</button>
+        </div>
+        <div id="detail-records" class="admin-records"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Patient check-ins are sensitive. Sign out on shared computers.</p>
+    </footer>
+  </body>
+</html>

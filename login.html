@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <title>Sign in | Mindful Check-in</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./api-config.js"></script>
+    <script src="./auth-client.js" defer></script>
+    <script src="./login.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Mindful Check-in home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>mindful<span class="brand-light"> check-in</span></span>
+      </a>
+      <nav id="account-nav" class="account-nav" aria-label="Account"></nav>
+    </header>
+
+    <main class="admin-main">
+      <section class="intro admin-intro">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> WELCOME</p>
+        <h1>Sign in or create an account</h1>
+        <p class="intro-copy">
+          Patients register with their email to take the check-in and keep
+          their results. Doctors sign in to review the check-ins of the
+          patients linked to them.
+        </p>
+      </section>
+
+      <section class="form-shell auth-shell" aria-labelledby="auth-title">
+        <div class="segmented" role="tablist" aria-label="Sign in or register">
+          <button id="tab-login" class="segmented-option is-active" type="button" role="tab" aria-selected="true">Sign in</button>
+          <button id="tab-register" class="segmented-option" type="button" role="tab" aria-selected="false">Create account</button>
+        </div>
+
+        <form id="login-form" novalidate>
+          <h2 id="auth-title">Sign in</h2>
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input id="login-email" class="field-input" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input id="login-password" class="field-input" type="password" autocomplete="current-password" required />
+          </div>
+          <button class="button button-primary auth-submit" type="submit">Sign in</button>
+          <p id="login-error" class="error-message" role="alert" hidden></p>
+        </form>
+
+        <form id="register-form" novalidate hidden>
+          <h2>Create your account</h2>
+          <fieldset class="role-choice">
+            <legend>I am a…</legend>
+            <label class="role-option">
+              <input type="radio" name="role" value="patient" checked />
+              <span><strong>Patient</strong> I want to take the check-in</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="role" value="doctor" />
+              <span><strong>Doctor</strong> I want to review my patients’ check-ins</span>
+            </label>
+          </fieldset>
+
+          <div class="field">
+            <label for="reg-name">Full name</label>
+            <input id="reg-name" class="field-input" type="text" autocomplete="name" maxlength="80" required />
+          </div>
+          <div class="field">
+            <label for="reg-email">Email</label>
+            <input id="reg-email" class="field-input" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="reg-password">Password</label>
+            <input id="reg-password" class="field-input" type="password" autocomplete="new-password" minlength="10" maxlength="128" required />
+            <p class="field-hint">At least 10 characters.</p>
+          </div>
+
+          <div id="patient-fields">
+            <div class="field">
+              <label for="reg-doctor-code">Doctor code <span class="field-optional">(optional)</span></label>
+              <input id="reg-doctor-code" class="field-input" type="text" autocomplete="off" maxlength="12" placeholder="ABCD-EFGH" />
+              <p class="field-hint">If your doctor gave you a code, enter it so they can see your check-ins. You can add or remove it later.</p>
+            </div>
+            <label class="consent-line">
+              <input id="reg-adult" type="checkbox" />
+              <span>I am 18 or older.</span>
+            </label>
+            <label class="consent-line">
+              <input id="reg-consent" type="checkbox" />
+              <span>
+                I understand that each check-in I complete is saved to my
+                account, and is visible to me and to the doctor linked to my
+                account (if any). I can unlink my doctor or delete my account
+                at any time.
+              </span>
+            </label>
+          </div>
+
+          <div id="doctor-fields" hidden>
+            <div class="field">
+              <label for="reg-invite">Doctor access code</label>
+              <input id="reg-invite" class="field-input" type="password" autocomplete="off" />
+              <p class="field-hint">Provided by the project team. This keeps patient records limited to verified doctors.</p>
+            </div>
+          </div>
+
+          <button class="button button-primary auth-submit" type="submit">Create account</button>
+          <p id="register-error" class="error-message" role="alert" hidden></p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Mindful Check-in · NMIMS student academic project</p>
+      <p>This is a reflection tool, not a diagnosis.</p>
+      <p><a href="./">Back to the check-in</a></p>
+    </footer>
+  </body>
+</html>
