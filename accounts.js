@@ -87,11 +87,24 @@ export function mapSubmission(row) {
     safetySupport: Boolean(row.safety_support),
     unusualExperienceReferral: Boolean(row.unusual_experience_referral),
     functioningScore: row.functioning_score,
+    advice: row.ai_status
+      ? { status: row.ai_status, source: row.ai_source, text: row.ai_advice }
+      : null,
+    review: row.review_verdict
+      ? {
+          verdict: row.review_verdict,
+          notes: row.review_notes,
+          reviewedAt: row.reviewed_at,
+          reviewerName: row.reviewer_name ?? null,
+        }
+      : null,
   };
 }
 
 const submissionColumns = `id, submitted_at, answers_json, scores_json,
-  safety_support, unusual_experience_referral, functioning_score`;
+  safety_support, unusual_experience_referral, functioning_score,
+  ai_advice, ai_status, ai_source, review_verdict, review_notes, reviewed_at,
+  (SELECT name FROM users r WHERE r.id = submissions.reviewed_by) AS reviewer_name`;
 
 async function findDoctorByCode(env, rawCode) {
   const code = normalizeDoctorCode(rawCode);
@@ -241,6 +254,15 @@ async function login(body, env, { json, origin }) {
     return json({ error: "That email and password did not match." }, 401, origin);
   }
   await env.DB.prepare("DELETE FROM login_failures WHERE email = ?").bind(email).run();
+  // The sign-in form sends the role picked with the Patient/Doctor radio button.
+  if ((body?.role === "patient" || body?.role === "doctor") && body.role !== user.role) {
+    const actual = user.role === "doctor" ? "Doctor" : "Patient";
+    return json(
+      { error: `This account is registered as a ${actual.toLowerCase()}. Select "${actual}" above to sign in.` },
+      403,
+      origin,
+    );
+  }
   const session = await createSession(env, user.id);
   return json({ ...session, user: await describeUser(env, user) }, 200, origin);
 }
@@ -325,6 +347,8 @@ export async function handleAccounts(request, env, url, origin, { json, readJson
         SELECT u.id, u.name, u.email, u.created_at,
           (SELECT COUNT(*) FROM submissions s WHERE s.user_id = u.id) AS check_in_count,
           (SELECT MAX(s.safety_support) FROM submissions s WHERE s.user_id = u.id) AS ever_safety,
+          (SELECT COUNT(*) FROM submissions s WHERE s.user_id = u.id
+             AND s.ai_status IS NOT NULL AND s.review_verdict IS NULL) AS pending_reviews,
           l.submitted_at AS last_at, l.mood_band, l.anxiety_band, l.stress_band,
           l.safety_support AS last_safety
         FROM users u
@@ -349,6 +373,7 @@ export async function handleAccounts(request, env, url, origin, { json, readJson
               : null,
             latestSafetySupport: Boolean(row.last_safety),
             everSafetySupport: Boolean(row.ever_safety),
+            pendingReviews: row.pending_reviews ?? 0,
           })),
         },
         200,
@@ -378,6 +403,44 @@ export async function handleAccounts(request, env, url, origin, { json, readJson
         200,
         origin,
       );
+    }
+    // The doctor marks whether the AI's advice for a check-in was right.
+    const reviewMatch = path.match(/^\/api\/doctor\/submissions\/(\d+)\/review$/);
+    if (reviewMatch && method === "POST") {
+      const body = await readJson(request);
+      const verdict = body?.verdict;
+      const notes = typeof body?.notes === "string" ? body.notes.trim() : "";
+      if (verdict !== "appropriate" && verdict !== "needs_changes") {
+        return json({ error: "Choose whether the AI advice was appropriate or needs changes." }, 400, origin);
+      }
+      if (notes.length > 1500) {
+        return json({ error: "Notes must be 1500 characters or fewer." }, 400, origin);
+      }
+      if (verdict === "needs_changes" && notes.length < 10) {
+        return json(
+          { error: "Please explain what should change (at least 10 characters) so the patient gets the right advice." },
+          400,
+          origin,
+        );
+      }
+      // Only check-ins from this doctor's own linked patients can be reviewed.
+      const owned = await env.DB.prepare(`
+        SELECT s.id FROM submissions s JOIN users p ON p.id = s.user_id
+        WHERE s.id = ? AND p.role = 'patient' AND p.doctor_id = ?
+      `)
+        .bind(Number(reviewMatch[1]), user.id)
+        .first();
+      if (!owned) return json({ error: "Check-in not found." }, 404, origin);
+      await env.DB.prepare(`
+        UPDATE submissions SET review_verdict = ?, review_notes = ?, reviewed_by = ?, reviewed_at = ?
+        WHERE id = ?
+      `)
+        .bind(verdict, notes || null, user.id, new Date().toISOString(), owned.id)
+        .run();
+      const row = await env.DB.prepare(`SELECT ${submissionColumns} FROM submissions WHERE id = ?`)
+        .bind(owned.id)
+        .first();
+      return json({ submission: mapSubmission(row) }, 200, origin);
     }
   }
 
