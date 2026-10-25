@@ -833,6 +833,41 @@ h1 {
   overflow-x: auto;
 }
 
+.admin-chart-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-chart-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e7eae3;
+  border-radius: 10px;
+  background: #fbfcf8;
+}
+
+.admin-chart-card h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.admin-distribution-table th:not(:first-child),
+.admin-distribution-table td,
+.admin-daily-table td {
+  text-align: right;
+}
+
+.admin-distribution-table tbody th,
+.admin-daily-table tbody th {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.admin-distribution-table tbody tr:nth-child(even),
+.admin-daily-table tbody tr:nth-child(even) {
+  background: #f1f4ef;
+}
+
 .admin-band-table {
   width: 100%;
   border-collapse: collapse;

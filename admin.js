@@ -402,54 +402,37 @@ function renderBandCharts(rows) {
     bySection.get(category).set(band, Number(count) || 0);
   }
 
+  const table = document.createElement("table");
+  table.className = "admin-band-table admin-distribution-table";
+  const head = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  for (const heading of ["Section", ...scoreBands]) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = heading;
+    headerRow.append(cell);
+  }
+  head.append(headerRow);
+  const body = document.createElement("tbody");
   for (const name of Object.values(sectionNames)) {
     const counts = bySection.get(name) ?? new Map();
-    const total = scoreBands.reduce(
-      (sum, band) => sum + (counts.get(band) ?? 0),
-      0,
-    );
-    const row = document.createElement("div");
-    row.className = "admin-band-chart-row";
-    const label = document.createElement("div");
-    label.className = "admin-band-chart-label";
+    const total = scoreBands.reduce((sum, band) => sum + (counts.get(band) ?? 0), 0);
+    const row = document.createElement("tr");
+    const label = document.createElement("th");
+    label.scope = "row";
     label.textContent = name;
-    const track = document.createElement("div");
-    track.className = "admin-stacked-bar";
-    track.setAttribute(
-      "role",
-      "img",
-    );
-    track.setAttribute(
-      "aria-label",
-      `${name}: ${scoreBands.map((band) => `${band} ${counts.get(band) ?? 0}`).join(", ")}`,
-    );
+    row.append(label);
     for (const band of scoreBands) {
       const count = counts.get(band) ?? 0;
-      const segment = document.createElement("span");
-      segment.className = `admin-stacked-segment band-${band.toLowerCase()}`;
-      segment.style.width = `${total ? (count / total) * 100 : 0}%`;
-      if (count) segment.title = `${band}: ${count}`;
-      track.append(segment);
+      const cell = document.createElement("td");
+      const percentage = total ? Math.round((count / total) * 100) : 0;
+      cell.textContent = `${count} (${percentage}%)`;
+      row.append(cell);
     }
-    const legend = document.createElement("div");
-    legend.className = "admin-chart-legend";
-    for (const band of scoreBands) {
-      const item = document.createElement("span");
-      item.className = "admin-chart-legend-item";
-      const swatch = document.createElement("i");
-      swatch.className = `admin-chart-swatch band-${band.toLowerCase()}`;
-      swatch.setAttribute("aria-hidden", "true");
-      const percentage = total
-        ? Math.round(((counts.get(band) ?? 0) / total) * 100)
-        : 0;
-      const text = document.createElement("span");
-      text.textContent = `${band} ${counts.get(band) ?? 0} (${percentage}%)`;
-      item.append(swatch, text);
-      legend.append(item);
-    }
-    row.append(label, track, legend);
-    bandCharts.append(row);
+    body.append(row);
   }
+  table.append(head, body);
+  bandCharts.append(table);
 }
 
 function renderSubmissionTrend(submissions) {
@@ -479,35 +462,35 @@ function renderSubmissionTrend(submissions) {
       countsByDay.set(key, countsByDay.get(key) + 1);
     }
   }
-  const maximum = Math.max(1, ...countsByDay.values());
-  for (const [index, date] of days.entries()) {
-    const count = countsByDay.get(formatDateKey(date)) ?? 0;
-    const column = document.createElement("div");
-    column.className = "admin-trend-column";
-    const barArea = document.createElement("div");
-    barArea.className = "admin-trend-bar-area";
-    const bar = document.createElement("span");
-    bar.className = "admin-trend-bar";
-    bar.setAttribute("role", "img");
-    bar.style.height = `${count ? Math.max((count / maximum) * 100, 4) : 0}%`;
-    bar.setAttribute(
-      "aria-label",
-      `${date.toLocaleDateString()}: ${count} saved ${count === 1 ? "submission" : "submissions"}`,
-    );
-    bar.title = `${date.toLocaleDateString()}: ${count}`;
-    const value = document.createElement("span");
-    value.className = "admin-trend-count";
-    value.textContent = count || "";
-    barArea.append(bar, value);
-    const dateLabel = document.createElement("span");
-    dateLabel.className = "admin-trend-date";
-    dateLabel.textContent =
-      index % 2 === 0 || index === days.length - 1
-        ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-        : "";
-    column.append(barArea, dateLabel);
-    submissionTrend.append(column);
+  const table = document.createElement("table");
+  table.className = "admin-band-table admin-daily-table";
+  const head = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  for (const heading of ["Date", "Saved submissions"]) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = heading;
+    headerRow.append(cell);
   }
+  head.append(headerRow);
+  const body = document.createElement("tbody");
+  for (const date of days) {
+    const count = countsByDay.get(formatDateKey(date)) ?? 0;
+    const row = document.createElement("tr");
+    const dateCell = document.createElement("th");
+    dateCell.scope = "row";
+    dateCell.textContent = date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    const countCell = document.createElement("td");
+    countCell.textContent = String(count);
+    row.append(dateCell, countCell);
+    body.append(row);
+  }
+  table.append(head, body);
+  submissionTrend.append(table);
 }
 
 function renderRecords(submissions) {
